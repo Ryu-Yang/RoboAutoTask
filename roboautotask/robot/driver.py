@@ -40,7 +40,7 @@ class InterpolationDriver(Node):
         q_end = np.array(end_quat)
 
         # 抬升参数
-        lift_height = 0.04  # 最大抬升高度
+        lift_height = 0.07  # 最大抬升高度
 
         for i in range(steps + 1):
             t = i / float(steps)

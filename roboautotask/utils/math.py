@@ -66,8 +66,8 @@ def quaternion_slerp(q0, q1, t):
 
 def generate_random_points_around_center(
     center_point: List[float],  # 输入的中心点 [x, y, z]
-    rectangle_width: float = 0.4,  # 矩形区域宽度（x方向）
-    rectangle_length: float = 0.4,  # 矩形区域长度（y方向）
+    rectangle_width: float = 0.3,  # 矩形区域宽度（x方向）
+    rectangle_length: float = 0.3,  # 矩形区域长度（y方向）
     rectangle_height: float = 0.01,   # 矩形区域高度（z方向）
     exclusion_radius: float = 0.095,   # 排除圆的半径
     num_points: int = 1,           # 要生成的点的数量
