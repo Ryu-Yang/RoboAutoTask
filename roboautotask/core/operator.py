@@ -78,8 +78,8 @@ class Operator:
         except Exception as e:
             logger.error(f"✗ 查找任务时出错: {e}")
         
-        logger.info("等待10秒后关闭...")
-        time.sleep(10)
+        # logger.info("等待10秒后关闭...")
+        # time.sleep(10)
 
     # def exec_task(self):
     #     pass
