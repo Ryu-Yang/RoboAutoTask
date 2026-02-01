@@ -1,5 +1,6 @@
 import numpy as np
 import yaml
+import logging_mp
 
 from roboautotask.estimation.sensor import capture_target_coordinate
 from roboautotask.robot.driver import execute_motion
@@ -9,6 +10,10 @@ from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 
 from roboautotask.utils.pose import load_pose_from_file
 from roboautotask.utils.math import generate_random_points_around_center
+
+
+logger = logging_mp.get_logger(__name__)
+
 
 class MotionExecutor:
     def __init__(self, config_path="tasks.yaml"):
@@ -86,7 +91,10 @@ class MotionExecutor:
         else:
             return
 
-        final_pos, final_quat = get_target_flange_pose(s_p, rand_pos, offset_x=0)
+        logger.info(f"rand_pos: {rand_pos} ")
+        final_pos, final_quat = get_target_flange_pose(s_p, rand_pos, offset_x=0.08)
+
+        logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
         execute_motion(s_p, s_q, final_pos, final_quat, 100)
         return
     
