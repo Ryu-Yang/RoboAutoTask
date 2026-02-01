@@ -7,10 +7,10 @@ from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped, Quaternion, Point
 from sensor_msgs.msg import JointState
 
-from roboautotask.estimation import utils
 from roboautotask.configs import topic
 
 from roboautotask.utils.math import quaternion_slerp
+from roboautotask.utils.pose import save_pose_to_file
 
 
 # ================= 主驱动类 =================
@@ -192,7 +192,7 @@ def execute_motion(start_pos, start_quat, target_pos, target_quat, gripper_pos):
     node = InterpolationDriver(start_pos, start_quat, target_pos, target_quat, steps=60, gripper_pos=gripper_pos)
     
     # 更新姿态文件
-    utils.save_pose_to_file("latest_pose.txt", target_pos, target_quat)
+    save_pose_to_file("latest_pose.txt", target_pos, target_quat)
 
     try:
         rclpy.spin(node)
