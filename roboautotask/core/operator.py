@@ -224,7 +224,7 @@ class Operator:
             self.page.wait_for_load_state("networkidle")
             
             # 修改选择器为退出采集按钮
-            quit_button = self.page.locator('button.el-button--primary >> text=退出采集')
+            quit_button = self.page.locator('button.el-button >> text=退出采集')
             
             # 等待按钮出现
             quit_button.wait_for(state="visible", timeout=5000)
