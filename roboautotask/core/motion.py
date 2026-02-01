@@ -89,12 +89,12 @@ class MotionExecutor:
             rand_pos = generate_random_points_around_center(center_point=robot_point_raw.tolist())[0]
 
         else:
-            return
+            return False
 
         logger.info(f"rand_pos: {rand_pos} ")
         final_pos, final_quat = get_target_flange_pose(s_p, rand_pos, offset_x=0.08)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
         execute_motion(s_p, s_q, final_pos, final_quat, 100)
-        return
+        return True
     
