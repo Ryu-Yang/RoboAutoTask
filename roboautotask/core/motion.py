@@ -86,7 +86,7 @@ class MotionExecutor:
             if cam_point is None: return False
             robot_point_raw = transform_cam_to_robot(cam_point)
 
-            rand_pos = generate_random_points_around_center(center_point=robot_point_raw.tolist())
+            rand_pos = generate_random_points_around_center(center_point=robot_point_raw.tolist())[0]
 
         else:
             return
