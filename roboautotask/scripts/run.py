@@ -70,12 +70,12 @@ def main():
             logger.info("任务采集完成")
 
             ### 执行场景重置
-            motion_sequence = [2, 1, 0]
+            # motion_sequence = [2, 1, 0]
 
-            for sid in motion_sequence:
-                if not motion_executor.execute_by_id(sid):
-                    logger.info(f"Sequence aborted at ID {sid}")
-                    break
+            # for sid in motion_sequence:
+            if not motion_executor.reset(2,-3):
+                logger.info(f"Sequence aborted at reset")
+                    # break
             
             logger.info("场景重置完成")
 
