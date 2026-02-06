@@ -13,6 +13,7 @@ from robodriver.core.ros2thread import ROS2_NodeManager
 
 from robodriver.robots.utils import make_robot_from_config, Robot
 from robodriver.utils import parser
+from robodriver.utils.import_utils import register_third_party_devices
 
 from roboautotask.robot.utils import get_pose_from_observation
 from roboautotask.calibration.detector import ArucoDetector
@@ -37,6 +38,10 @@ class ControlPipelineConfig:
 @parser.wrap()
 def main(cfg: ControlPipelineConfig):
     logger.info(pformat(asdict(cfg)))
+
+    register_third_party_devices()
+    logger.info(f"Registered robot types: {list(RobotConfig._choice_registry.keys())}")
+
 
     try:
         robot: Robot = make_robot_from_config(cfg.robot)
