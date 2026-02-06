@@ -9,7 +9,7 @@ from roboautotask.robot.utils import transform_cam_to_robot, get_target_flange_p
 from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 
 from roboautotask.utils.pose import load_pose_from_file
-from roboautotask.utils.math import generate_random_points_around_center
+from roboautotask.utils.math import generate_random_points_around_center, obj_is_in_placement
 
 
 logger = logging_mp.get_logger(__name__)
@@ -26,14 +26,14 @@ class MotionExecutor:
     def execute_by_id(self, grab_id,place_id):
         grab_item = self.cfg['items'].get(grab_id)
         place_item = self.cfg['items'].get(place_id)
-        if (not grab_item) or (not place_item): return False
+        if (not grab_item) or (not place_item): return 0
 
         print(f">>> Task: {grab_item['name']} (ID: {grab_id})")
 
         # 1. 定位：获取物体在基座坐标系下的原始位置
         if 'label' in grab_item:
             cam_point = capture_target_coordinate(grab_item['label'])
-            if cam_point is None: return False
+            if cam_point is None: return 0
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
@@ -43,10 +43,24 @@ class MotionExecutor:
         print(f">>> Task: {place_item['name']} (ID: {place_id})")
         if 'label' in place_item:
             place_cam_point = capture_target_coordinate(place_item['label'])
-            if place_cam_point is None: return False
+            if place_cam_point is None: return 0
             place_robot_point_raw = transform_cam_to_robot(place_cam_point)
         else:
             place_robot_point_raw = np.array(place_item['pos'], dtype=float)
+        
+        # ------------- 把此时的放置物体的坐标保存到文件里 -------------
+        line = place_robot_point_raw.tolist()
+        line = ' '.join(map(str, line))
+        with open('palced_obj_pos.txt', 'w') as f:
+            f.write(line)
+        # ---------------- 判断是否需要采集数据 -------------------
+        with open('palced_obj_size.txt', 'r') as f:
+            line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
+            real_w, real_h = map(float, line.split())
+        # 如果物体在放置物里面的话需要丢弃重采
+        if obj_is_in_placement(robot_point_raw, place_robot_point_raw,real_w,real_h):
+            return 2
+
 
         # 2. 获取当前起始位姿
         start_pos, start_quat = self._get_current()
@@ -92,26 +106,46 @@ class MotionExecutor:
 
         grab_item = self.cfg['items'].get(grab_id)
         place_item = self.cfg['items'].get(place_id)
-        if (not grab_item)or(not place_item): return False
+        if (not grab_item)or(not place_item): return 0
 
         print(f">>> Task: {grab_item['name']} (ID: {grab_id})")
 
         # 1. 定位：获取抓取物体在基座坐标系下的原始位置
         if 'label' in grab_item:
             cam_point = capture_target_coordinate(grab_item['label'])
-            if cam_point is None: return False
+            if cam_point is None: return 0
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
 
-        # 获取放置位物体在基座标系下的原始位置,并产生随机位置
-        print(f">>> Task: {place_item['name']} (ID: {place_id})")
-        if 'label' in place_item:
-            place_cam_point = capture_target_coordinate(place_item['label'])
-            if place_cam_point is None: return False
-            place_robot_point_raw = transform_cam_to_robot(place_cam_point)
-        else:
-            place_robot_point_raw = np.array(place_item['pos'], dtype=float)
+        # # 获取放置位物体在基座标系下的原始位置,并产生随机位置
+        # print(f">>> Task: {place_item['name']} (ID: {place_id})")
+        # if 'label' in place_item:
+        #     place_cam_point = capture_target_coordinate(place_item['label'])
+        #     if place_cam_point is None: return 0
+        #     place_robot_point_raw = transform_cam_to_robot(place_cam_point)
+        # else:
+        #     place_robot_point_raw = np.array(place_item['pos'], dtype=float)
+        # place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
+
+        # 在重置里面删除对放置物的识别，基座标点直接照搬放置时识别的位置
+        with open('palced_obj_pos.txt', 'r') as f:
+            line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
+            place_x,place_y,place_z = map(float, line.split())
+        place_robot_point_raw = [place_x,place_y,place_z]
+        place_robot_point_raw = np.array(place_robot_point_raw)
+
+        # ---------------- 判断是否需要重置 -------------------
+        with open('palced_obj_size.txt', 'r') as f:
+            line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
+            real_w, real_h = map(float, line.split())
+        print(robot_point_raw, place_robot_point_raw,real_w,real_h)
+        # 如果物体在放置物里面的话需要丢弃重采
+        if not obj_is_in_placement(robot_point_raw, place_robot_point_raw,real_w,real_h):
+            return 2
+        
+
+        # --------------- 判断通过了以后再进行随机点的生成 ------------------
         place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
 
         # 2. 获取当前起始位姿
@@ -158,7 +192,7 @@ class MotionExecutor:
         s_p, s_q = self._get_current()
         execute_motion(s_p, s_q, ROBOT_START_POS, ROBOT_START_ORI, 100)
         # robot_driver.set_gripper_position(100)
-        return True
+        return 1
     
     def go_random_pose(self, center_item_id = -3):
         rand_pos = []

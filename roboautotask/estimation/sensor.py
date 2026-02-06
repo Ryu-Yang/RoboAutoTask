@@ -65,6 +65,23 @@ def capture_target_coordinate(TARGET_CLASS=TARGET_CLASS):
                 if int(b.cls) == cls_target:
                     x1, y1, x2, y2 = map(int, b.xyxy[0].cpu().numpy())
                     cx, cy = int((x1 + x2) / 2), int((y1 + y2) / 2)
+
+                    # --- 新增：计算真实世界中的长和宽 ---
+                    dist = depth_frame.get_distance(cx, cy)
+                    if dist > 0:
+                        # 得到左上角点和右下角点的 3D 坐标
+                        p_topleft = rs.rs2_deproject_pixel_to_point(intr, [x1, y1], dist)
+                        p_bottomright = rs.rs2_deproject_pixel_to_point(intr, [x2, y2], dist)
+                        
+                        # 真实世界的宽度和高度 (单位是米)
+                        real_w = abs(p_bottomright[0] - p_topleft[0])
+                        real_h = abs(p_bottomright[1] - p_topleft[1])
+
+                        line = f"{real_w} {real_h}"
+                        # 写入文件（覆盖模式）
+                        with open('palced_obj_size.txt', 'w') as f:
+                            f.write(line)
+                    # ----------------------------------
                     
                     # 获取3D点
                     pt_3d = get_3d_pts(depth_frame, intr, cx, cy)

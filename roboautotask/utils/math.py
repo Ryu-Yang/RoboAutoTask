@@ -223,3 +223,26 @@ def generate_random_points_around_center(
             points_generated += 1
     
     return np.array(all_points)
+
+
+def obj_is_in_placement(point,center,width,height):
+    """
+    判断点是否在矩形内
+    :param point: (x1, y1)
+    :param center: (xc, yc) 矩形中心
+    :param width: 宽度
+    :param height: 高度
+    :return: Boolean
+    """
+    x1, y1, z1 = point
+    xc, yc, zc = center
+    
+    # 计算水平和垂直方向的半长
+    half_w = width / 2
+    half_h = height / 2
+    
+    # 检查 x 和 y 是否都在边界范围内
+    in_x = xc - half_w <= x1 <= xc + half_w
+    in_y = yc - half_h <= y1 <= yc + half_h
+    
+    return in_x and in_y

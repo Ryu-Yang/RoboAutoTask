@@ -92,10 +92,12 @@ def main():
                 operator.find_task()
                 operator.start_task()
 
-
-                if not motion_executor.execute_by_id(grab_id,place_id):
+                result = motion_executor.execute_by_id(grab_id, place_id)
+                if result == 0:
                     logger.info(f"Sequence aborted at ID {sid}")
                     break
+                elif result == 2:
+                    logger.info('无法采集，需要重置！')
 
                 operator.complete_task()
                 operator.commit_task()
