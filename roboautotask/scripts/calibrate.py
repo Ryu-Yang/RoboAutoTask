@@ -102,6 +102,9 @@ def calibrate(cfg: ControlPipelineConfig):
                         valid = False; break
                     
                     depth = camera_node.get_depth_value(px, py)
+
+                    if depth is None:
+                        valid = False; break
                     if depth <= 0 or depth > 5.0:
                         valid = False; break
                     
