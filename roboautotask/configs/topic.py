@@ -1,4 +1,3 @@
-# ROS2 Topic 配置
 LEFT_EE_PUB = '/autotask_motion_target/target_pose_arm_left'
 LEFT_EE_SUB = '/relaxed_ik/motion_control/pose_ee_arm_left'
 RIGHT_EE_PUB = '/autotask_motion_target/target_pose_arm_right'
@@ -7,3 +6,8 @@ LEFT_GRIPPER_PUB = '/autotask_motion_target/target_position_gripper_left'
 LEFT_GRIPPER_SUB = '/hdas/feedback_gripper_left'
 RIGHT_GRIPPER_PUB = '/autotask_motion_target/target_position_gripper_right'
 RIGHT_GRIPPER_SUB = '/hdas/feedback_gripper_right'
+
+CAMERA_COLOR_SUB_TOPIC = '/camera/camera_head/color/image_raw'
+CAMERA_DEPTH_SUB_TOPIC = '/camera/camera_head/aligned_depth_to_color/image_raw'
+CAMERA_COLOR_INFO_SUB_TOPIC = '/camera/camera_head/color/camera_info'
+CAMERA_DEPTH_INFO_SUB_TOPIC = '/camera/camera_head/aligned_depth_to_color/camera_info'
