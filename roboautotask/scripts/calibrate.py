@@ -90,6 +90,7 @@ def calibrate(cfg: ControlPipelineConfig):
             obs = robot.get_observation()
             arm_pos, arm_ori = get_pose_from_observation(obs, "left")
             
+            detector.clean()
             detector.detect(camera_node.color_image)
             for id, marker in detector.latest_markers.items():
                 points_3d = []
@@ -114,7 +115,8 @@ def calibrate(cfg: ControlPipelineConfig):
                 center_rs = np.mean(points_3d, axis=0)
                 x, y, z = center_rs[2], -center_rs[0], -center_rs[1]
                 detector.latest_centers[id] = (x, y, z)
-            detector.update_view_image()
+                detector.update_view_image()
+            
             img = detector.get_view_image()
 
             if show_record_frame > 0:

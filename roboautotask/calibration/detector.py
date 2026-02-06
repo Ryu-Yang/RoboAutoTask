@@ -67,3 +67,7 @@ class ArucoDetector():
         img = self.latest_view.copy() if self.latest_view is not None else \
                     np.zeros((480, 640, 3), np.uint8)
         return img
+
+    def clean(self):
+        self.latest_markers = {}
+        self.latest_centers = {}
