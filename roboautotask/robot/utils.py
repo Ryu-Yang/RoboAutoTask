@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Any
 
 from roboautotask.configs.svd import CALIB_R, CALIB_T
 from roboautotask.configs.robot import ROBOT_START_POS
@@ -73,3 +74,29 @@ def get_target_flange_pose(current_pos, target_obj_pos, offset_x):
     final_pos = P_target - (ux * offset_x)
     
     return final_pos, final_quat
+
+
+def get_pose_from_observation(observation: dict[str, Any], filt_name):
+    """
+    从 RoboDriver 机器人的observation中读取pose
+    """
+    pos = np.zeros(3)
+    quat = np.zeros(4)
+
+    for name, data in observation.items():
+        if "pos" in name and "pos_x" in name and filt_name in name:
+            pos[0] = float(data)
+        elif "pos" in name and "pos_y" in name and filt_name in name:
+            pos[1] = float(data)
+        elif "pos" in name and "pos_z" in name and filt_name in name:
+            pos[2] = float(data)
+        if "quat" in name and "quat_x" in name and filt_name in name:
+            quat[0] = float(data)
+        elif "quat" in name and "quat_y" in name and filt_name in name:
+            quat[1] = float(data)
+        elif "quat" in name and "quat_z" in name and filt_name in name:
+            quat[2] = float(data)
+        elif "quat" in name and "quat_w" in name and filt_name in name:
+            quat[3] = float(data)
+
+    return pos, quat
