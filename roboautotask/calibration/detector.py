@@ -46,7 +46,7 @@ class ArucoDetector():
         
     def update_view_image(self):
         display = self.latest_view
-        for id, marker in self.latest_markers.item():
+        for id, marker in self.latest_markers.items():
             # 在图片显示mark点xyz
             cx = int(np.mean(marker[:, 0]))
             cy = int(np.mean(marker[:, 1]))
