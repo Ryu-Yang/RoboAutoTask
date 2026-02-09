@@ -90,6 +90,7 @@ def main():
                 grab_id,place_id = sid
 
                 operator.find_task()
+                operator.exec_task()
                 operator.start_task()
 
                 result = motion_executor.execute_by_id(grab_id, place_id)
