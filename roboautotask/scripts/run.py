@@ -99,6 +99,22 @@ def main():
                     break
                 elif result == 2:
                     logger.info('无法采集，需要重置！')
+                    operator.destroy_task()
+                    operator.quit_task()
+
+                    if not motion_executor.reset(grab_id,place_id):
+                        logger.info(f"Sequence aborted at reset")
+                    logger.info("场景重置完成")
+                    break
+
+                elif result == 3:
+                    logger.info('运动时间超时，需要检查目标物位置！')
+                    operator.destroy_task()
+                    operator.quit_task()
+                    # 加按键等待
+                    raise SystemExit
+
+
 
                 operator.complete_task()
                 operator.commit_task()

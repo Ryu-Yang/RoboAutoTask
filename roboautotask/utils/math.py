@@ -162,9 +162,9 @@ def generate_random_points_around_center(
     rectangle_width: float = 0.19,  # 矩形区域宽度（x方向）
     rectangle_length: float = 0.4,  # 矩形区域长度（y方向）
     rectangle_height: float = 0.01,   # 矩形区域高度（z方向）
-    exclusion_radius: float = 0.095,   # 排除圆的半径
+    exclusion_radius: float = 0.1,   # 排除圆的半径
     num_points: int = 1,           # 要生成的点的数量
-    distribution_power: float = 2.0   # 控制概率分布的参数，值越大越靠近中心
+    distribution_power: float = 3.0   # 控制概率分布的参数，值越大越靠近外面
 ) -> np.ndarray:
     """
     在以输入点为中心的矩形区域内生成随机点
@@ -225,7 +225,7 @@ def generate_random_points_around_center(
     return np.array(all_points)
 
 
-def obj_is_in_placement(point,center,width,height):
+def obj_is_in_placement(point,center,err=0.116):
     """
     判断点是否在矩形内
     :param point: (x1, y1)
@@ -234,15 +234,17 @@ def obj_is_in_placement(point,center,width,height):
     :param height: 高度
     :return: Boolean
     """
-    x1, y1, z1 = point
-    xc, yc, zc = center
+    # x1, y1, z1 = point
+    # xc, yc, zc = center
     
-    # 计算水平和垂直方向的半长
-    half_w = width / 2
-    half_h = height / 2
+    # # 计算水平和垂直方向的半长
+    # half_w = width / 2
+    # half_h = height / 2
     
-    # 检查 x 和 y 是否都在边界范围内
-    in_x = xc - half_w <= x1 <= xc + half_w
-    in_y = yc - half_h <= y1 <= yc + half_h
+    # # 检查 x 和 y 是否都在边界范围内
+    # in_x = xc - half_w <= x1 <= xc + half_w
+    # in_y = yc - half_h <= y1 <= yc + half_h
     
-    return in_x and in_y
+    # return in_x and in_y
+    dis = np.linalg.norm(np.array(point) - np.array(center))
+    return dis<err

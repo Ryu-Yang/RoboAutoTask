@@ -3,7 +3,7 @@ items:
   2:
     name: "orange"
     label: "orange"
-    offsets: {x: 0.03, y: 0, z: 0} # ee前3cm处对准物体识别中心
+    offsets: {x: 0.05, y: 0, z: -0.006} # ee前5cm处对准物体识别中心
     gripper_pos: 20        # 抓取时闭合到20
   -2:
     name: "book"

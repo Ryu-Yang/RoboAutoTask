@@ -169,7 +169,7 @@ class Operator:
 
     def destroy_task(self):
         """点击 丢弃重采 按钮"""
-        self.click_button("丢弃重采")
+        self.click_button("丢弃重采", primary=False)
 
     def quit_task(self):
         """点击 退出采集 按钮"""

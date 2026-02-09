@@ -6,7 +6,7 @@ from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 logging_mp.basic_config(level=logging_mp.INFO)
 logger = logging_mp.get_logger(__name__)
 
-def main():
+def reset():
     try:
         MeasureCurrPose()
         start_pos, start_quat = load_pose_from_file("latest_pose.txt")
@@ -24,4 +24,4 @@ def main():
 
     
 if __name__ == "__main__":
-    main()
+    reset()

@@ -28,6 +28,13 @@ def capture_target_coordinate(TARGET_CLASS=TARGET_CLASS):
     cls_target = cls_target[0]
 
     # RealSense 初始化
+
+    # # 强制复位所有 RealSense 设备
+    # ctx = rs.context()
+    # devices = ctx.query_devices()
+    # for dev in devices:
+    #     dev.hardware_reset()  # 发送硬件复位指令
+        
     pipeline = rs.pipeline()
     cfg = rs.config()
     cfg.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)

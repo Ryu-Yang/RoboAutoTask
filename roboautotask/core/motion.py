@@ -10,6 +10,7 @@ from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 
 from roboautotask.utils.pose import load_pose_from_file
 from roboautotask.utils.math import generate_random_points_around_center, obj_is_in_placement
+from roboautotask.scripts.robo_reset import reset
 
 
 logger = logging_mp.get_logger(__name__)
@@ -58,7 +59,7 @@ class MotionExecutor:
             line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
             real_w, real_h = map(float, line.split())
         # 如果物体在放置物里面的话需要丢弃重采
-        if obj_is_in_placement(robot_point_raw, place_robot_point_raw,real_w,real_h):
+        if obj_is_in_placement(robot_point_raw, place_robot_point_raw):
             return 2
 
 
@@ -93,7 +94,9 @@ class MotionExecutor:
         )
         # 5. 执行运动与夹爪
         print(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
-        execute_motion(start_pos, start_quat, final_pos, final_quat, grab_item['gripper_pos'])
+        if not execute_motion(start_pos, start_quat, final_pos, final_quat, grab_item['gripper_pos']):
+            reset()
+            return 3
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
         print(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
@@ -128,7 +131,7 @@ class MotionExecutor:
         #     place_robot_point_raw = np.array(place_item['pos'], dtype=float)
         # place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
 
-        # 在重置里面删除对放置物的识别，基座标点直接照搬放置时识别的位置
+        # 在重置里面取消上面对放置物的识别，基座标点直接照搬放置时识别的位置
         with open('palced_obj_pos.txt', 'r') as f:
             line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
             place_x,place_y,place_z = map(float, line.split())
@@ -141,7 +144,7 @@ class MotionExecutor:
             real_w, real_h = map(float, line.split())
         print(robot_point_raw, place_robot_point_raw,real_w,real_h)
         # 如果物体在放置物里面的话需要丢弃重采
-        if not obj_is_in_placement(robot_point_raw, place_robot_point_raw,real_w,real_h):
+        if not obj_is_in_placement(robot_point_raw, place_robot_point_raw):
             return 2
         
 

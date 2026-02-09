@@ -72,6 +72,12 @@ class InterpolationDriver(Node):
         self.timer = self.create_timer(0.1, self.timer_callback)
         self.get_logger().info(f"Task Started. Steps: {steps}, Target Gripper: {gripper_pos}")
 
+
+        # ---------- 超时控制(10s未执行完操作说明卡住) ---------
+        self.start_time = time.time()
+        self.TIMEOUT_LIMIT = 10.0  # 10秒超时
+        self.success = False      # 记录最终是否成功执行
+
     def left_ee_sub_callback(self, msg):
         self.current_ee_pose = msg.pose.position
 
@@ -97,6 +103,13 @@ class InterpolationDriver(Node):
         self.right_gripper_pub.publish(g_msg)
 
     def timer_callback(self):
+        # 检查是否超时，超时直接退出
+        elapsed_total = time.time() - self.start_time
+        if elapsed_total > self.TIMEOUT_LIMIT:
+            self.get_logger().error(f"Motion Timeout! Elapsed: {elapsed_total:.2f}s")
+            self.success = False
+            raise SystemExit # 触发退出逻辑
+        
         # 1. 始终发布右臂（守护进程）
         self._publish_static_right_arm()
 
@@ -180,6 +193,7 @@ class InterpolationDriver(Node):
 
         # --- 状态 4: 结束 ---
         elif self.state == 'DONE':
+            self.success = True
             raise SystemExit
 
 
@@ -267,15 +281,25 @@ def execute_motion(start_pos, start_quat, target_pos, target_quat, gripper_pos):
     # 更新姿态文件
     save_pose_to_file("latest_pose.txt", target_pos, target_quat)
 
+    motion_success = False
     try:
         rclpy.spin(node)
+        motion_success = node.success # 获取节点运行后的成功状态
     except SystemExit:
-        pass
+        motion_success = node.success
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        motion_success = False
     finally:
         node.destroy_node()
         # 检查是否还有其他节点在使用 rclpy，如果没有则 shutdown
         if rclpy.ok():
             rclpy.shutdown()
+    # --- 超时或失败后的逻辑处理 ---
+    if not motion_success:
+        print("Motion failed or timed out. Triggering reset...")
+        return False
+    return True
 
 def set_gripper_position(position, side='left'):
     # 因为不需要单独的类控制夹爪，目前废弃
