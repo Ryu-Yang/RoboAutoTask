@@ -5,50 +5,105 @@ import logging_mp
 import time
 import numpy as np
 
+from dataclasses import asdict, dataclass
+from pprint import pformat
+
+from lerobot.robots import RobotConfig
+from robodriver.utils import parser
+from robodriver.core.ros2thread import ROS2_NodeManager
+from robodriver.utils.import_utils import register_third_party_devices
+from robodriver.robots.utils import make_robot_from_config, Robot
+
+from roboautotask.robot.daemon import Daemon
 from roboautotask.core.operator import Operator
+from roboautotask.core.operator import OperatorConfig
 from roboautotask.core.motion import MotionExecutor
+from roboautotask.core.motion import MotionConfig
 
 from roboautotask.utils.pose import save_pose_to_file
-
+from roboautotask.camera.realsense import RealsenseCameraClientNode
+# from roboautotask.robot.driver import InterpolationDriverNode
 from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
+from roboautotask.configs.topic import (
+    CAMERA_COLOR_SUB_TOPIC,
+    CAMERA_DEPTH_SUB_TOPIC,
+    CAMERA_COLOR_INFO_SUB_TOPIC,
+    CAMERA_DEPTH_INFO_SUB_TOPIC
+)
 
 
 logging_mp.basic_config(level=logging_mp.INFO)
 logger = logging_mp.get_logger(__name__)
 
 
-def main():
-    # 解析命令行参数
+@dataclass
+class ControlPipelineConfig:
+    robot: RobotConfig
+    operator: OperatorConfig
+    motion: MotionConfig
 
-    parser = argparse.ArgumentParser(description='自动化采集任务脚本')
-    
-    parser.add_argument('--motions', type=str, required=True,
-                       help='运动配置yaml文件路径')
-    parser.add_argument('--task-id', type=int, required=True,
-                       help='任务ID（必填）')
-    parser.add_argument('--user', type=str, required=True,
-                       help='登录账号（必填）')
-    parser.add_argument('--password', type=str, required=True,
-                       help='登录密码（必填）')
-    parser.add_argument('--url', type=str, default='http://localhost:5805/hmi/login',
-                       help='登录URL，默认为 http://localhost:5805/hmi/login')
-    parser.add_argument('--headless', action='store_true', default=False,
-                       help='以无头模式运行（不显示浏览器窗口）')
-    parser.add_argument('--task-wait-timeout', type=int, default=10000,
-                       help='等待元素加载的超时时间（毫秒），默认为10000')
-    args = parser.parse_args()
-    
-    logger.info(f"启动参数:")
-    logger.info(f"  任务ID: {args.task_id}")
-    logger.info(f"  用户名: {args.user}")
-    logger.info(f"  登录URL: {args.url}")
-    logger.info(f"  无头模式: {'是' if args.headless else '否'}")
 
+@parser.wrap()
+def run(cfg: ControlPipelineConfig):
+    # # 解析命令行参数
+    # parser = argparse.ArgumentParser(description='自动化采集任务脚本')
+    
+    # parser.add_argument('--motions', type=str, required=True,
+    #                    help='运动配置yaml文件路径')
+    # parser.add_argument('--task-id', type=int, required=True,
+    #                    help='任务ID（必填）')
+    # parser.add_argument('--user', type=str, required=True,
+    #                    help='登录账号（必填）')
+    # parser.add_argument('--password', type=str, required=True,
+    #                    help='登录密码（必填）')
+    # parser.add_argument('--url', type=str, default='http://localhost:5805/hmi/login',
+    #                    help='登录URL，默认为 http://localhost:5805/hmi/login')
+    # parser.add_argument('--headless', action='store_true', default=False,
+    #                    help='以无头模式运行（不显示浏览器窗口）')
+    # parser.add_argument('--task-wait-timeout', type=int, default=10000,
+    #                    help='等待元素加载的超时时间（毫秒），默认为10000')
+    # args = parser.parse_args()
+    
+    # logger.info(f"启动参数:")
+    # logger.info(f"  任务ID: {args.task_id}")
+    # logger.info(f"  用户名: {args.user}")
+    # logger.info(f"  登录URL: {args.url}")
+    # logger.info(f"  无头模式: {'是' if args.headless else '否'}")
+
+    logger.info(pformat(asdict(cfg)))
+
+    ros2_node_manager = ROS2_NodeManager()
+
+    try:
+        robot: Robot = make_robot_from_config(cfg.robot)
+    except Exception as e:
+        logger.critical(f"Failed to create robot: {e}")
+        raise
+
+    logger.info("Make robot success")
+    logger.info(f"robot.type: {robot.robot_type}")
+
+    camera_node = RealsenseCameraClientNode(
+        color_topic=CAMERA_COLOR_SUB_TOPIC,
+        depth_topic=CAMERA_DEPTH_SUB_TOPIC,
+        color_info_topic=CAMERA_COLOR_INFO_SUB_TOPIC,
+        depth_info_topic=CAMERA_DEPTH_INFO_SUB_TOPIC
+    )
+    if hasattr(robot, "get_node"):
+        robot_node = robot.get_node()
+    else:
+        logger.error("Can't get ros2 node from robot")
+    # driver_node = InterpolationDriverNode(0)
+
+    ros2_node_manager.add_node(camera_node)
+    ros2_node_manager.add_node(robot_node)
+    ros2_node_manager.start()
 
     save_pose_to_file("./latest_pose.txt", ROBOT_START_POS, ROBOT_START_ORI)
 
-    operator = Operator(args)
-    motion_executor = MotionExecutor(args.motions)
+    operator = Operator(cfg.operator)
+    daemon = Daemon(robot)
+    motion_executor = MotionExecutor(cfg.motion, daemon)
 
     operator.login()
 
@@ -168,6 +223,12 @@ def main():
     finally:
         operator.stop()
         motion_executor.go_home()
+
+
+def main():
+    register_third_party_devices()
+    logger.info(f"Registered robot types: {list(RobotConfig._choice_registry.keys())}")
+    run()
 
 
 if __name__ == "__main__":

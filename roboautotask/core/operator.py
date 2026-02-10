@@ -1,28 +1,40 @@
 import re
 import time
-
-from playwright.sync_api import Playwright, sync_playwright, expect, Browser
 import logging_mp
 from dataclasses import dataclass
 
+from playwright.sync_api import Playwright, sync_playwright, expect, Browser
+
+
 logger = logging_mp.get_logger(__name__)
+
+
+@dataclass()
+class OperatorConfig:
+    task_id: int
+    user: str
+    password: str
+    url: str = "http://localhost:5805/hmi/login"
+    headless: bool = False
+    task_wait_timeout: int = 10000
+
 
 @dataclass
 class Operator:
     """平台网页自动操作器"""
-    def __init__(self, args):
+    def __init__(self, cfg: OperatorConfig):
         self.playwright: Playwright = sync_playwright().start()
-        self.headless = args.headless
+        self.headless = cfg.headless
         self.browser: Browser = self.playwright.chromium.launch(headless=self.headless)
         self.context = self.browser.new_context()
 
-        self.url = args.url
-        self.user = args.user
-        self.password = args.password
+        self.url = cfg.url
+        self.user = cfg.user
+        self.password = cfg.password
 
         self.task = None
-        self.task_id = args.task_id
-        self.task_wait_timeout = args.task_wait_timeout
+        self.task_id = cfg.task_id
+        self.task_wait_timeout = cfg.task_wait_timeout
         
     def login(self):
         self.page = self.context.new_page()

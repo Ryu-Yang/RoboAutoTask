@@ -1,9 +1,11 @@
 import numpy as np
 import yaml
 import logging_mp
+from dataclasses import dataclass
 
 from roboautotask.estimation.sensor import capture_target_coordinate
-from roboautotask.robot.driver import execute_motion
+# from roboautotask.robot.driver import execute_motion
+from roboautotask.robot.daemon import Daemon
 from roboautotask.robot.utils import transform_cam_to_robot, get_target_flange_pose
 
 from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
@@ -16,13 +18,19 @@ from roboautotask.scripts.robo_reset import reset
 logger = logging_mp.get_logger(__name__)
 
 
+@dataclass()
+class MotionConfig:
+    config_path: str = "tasks.yaml"
+
+
 class MotionExecutor:
-    def __init__(self, config_path="tasks.yaml"):
-        with open(config_path, 'r') as f:
+    def __init__(self, cfg: MotionConfig, daemon: Daemon):
+        self.daemon = daemon
+        with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
-    def _get_current(self):
-        return load_pose_from_file("latest_pose.txt")
+    # def _get_current(self):
+    #     return load_pose_from_file("latest_pose.txt")
 
     def execute_by_id(self, grab_id,place_id):
         grab_item = self.cfg['items'].get(grab_id)
@@ -63,8 +71,8 @@ class MotionExecutor:
             return 2
 
 
-        # 2. 获取当前起始位姿
-        start_pos, start_quat = self._get_current()
+        # # 2. 获取当前起始位姿
+        # start_pos, start_quat = self._get_current()
 
         # 3. Z轴偏移处理（基座坐标系下直接叠加）
         # 比如放置在盘子上方，直接修改 robot_point_raw 的 Z 值
@@ -79,7 +87,6 @@ class MotionExecutor:
         off_x = grab_item.get('offsets', {}).get('x', 0)
         
         final_pos, final_quat = get_target_flange_pose(
-            start_pos, 
             robot_point_raw, 
             offset_x=off_x
         )
@@ -88,19 +95,18 @@ class MotionExecutor:
         place_off_x = place_item.get('offsets', {}).get('x', 0)
         
         place_final_pos, place_final_quat = get_target_flange_pose(
-            start_pos, 
             place_robot_point_raw, 
             offset_x=place_off_x
         )
         # 5. 执行运动与夹爪
         print(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
-        if not execute_motion(start_pos, start_quat, final_pos, final_quat, grab_item['gripper_pos']):
+        if not self.daemon.execute_motion(final_pos, final_quat, grab_item['gripper_pos']):
             reset()
             return 3
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
         print(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
-        execute_motion(final_pos, final_quat, place_final_pos, place_final_quat, place_item['gripper_pos'])
+        self.daemon.execute_motion(place_final_pos, place_final_quat, place_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
         
         return self.go_home()
@@ -151,8 +157,8 @@ class MotionExecutor:
         # --------------- 判断通过了以后再进行随机点的生成 ------------------
         place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
 
-        # 2. 获取当前起始位姿
-        start_pos, start_quat = self._get_current()
+        # # 2. 获取当前起始位姿
+        # start_pos, start_quat = self._get_current()
 
         # 3. Z轴偏移处理（基座坐标系下直接叠加）
         # 比如放置在盘子上方，直接修改 robot_point_raw 的 Z 值
@@ -167,7 +173,6 @@ class MotionExecutor:
         off_x = grab_item.get('offsets', {}).get('x', 0)
         
         final_pos, final_quat = get_target_flange_pose(
-            start_pos, 
             robot_point_raw, 
             offset_x=off_x
         )
@@ -175,31 +180,28 @@ class MotionExecutor:
         place_off_x = place_item.get('offsets', {}).get('x', 0)
         
         place_final_pos, place_final_quat = get_target_flange_pose(
-            start_pos, 
             place_robot_point_raw, 
             offset_x=place_off_x
         )
 
         # 5. 执行运动与夹爪
         print(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
-        execute_motion(start_pos, start_quat, final_pos, final_quat, grab_item['gripper_pos'])
+        self.daemon.execute_motion(final_pos, final_quat, grab_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
         print(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
-        execute_motion(final_pos, final_quat, place_final_pos, place_final_quat, place_item['gripper_pos'])
+        self.daemon.execute_motion(place_final_pos, place_final_quat, place_item['gripper_pos'])
         
 
         return self.go_home()
 
     def go_home(self):
-        s_p, s_q = self._get_current()
-        execute_motion(s_p, s_q, ROBOT_START_POS, ROBOT_START_ORI, 100)
+        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 100)
         # robot_driver.set_gripper_position(100)
         return 1
     
     def go_random_pose(self, center_item_id = -3):
         rand_pos = []
-        s_p, s_q = self._get_current()
 
         item = self.cfg['items'].get(center_item_id)
         if not item: return False
@@ -221,6 +223,6 @@ class MotionExecutor:
         final_pos, final_quat = get_target_flange_pose(s_p, rand_pos, offset_x=0.08)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
-        execute_motion(s_p, s_q, final_pos, final_quat, 100)
+        self.daemon.execute_motion(final_pos, final_quat, 100)
         return True
     
