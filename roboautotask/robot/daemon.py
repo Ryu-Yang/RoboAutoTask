@@ -2,6 +2,8 @@ import math
 import numpy as np
 import time
 import logging_mp
+import threading
+from typing import Any, Dict, Optional, Union
 
 from robodriver.robots.utils import make_robot_from_config, Robot
 
@@ -28,8 +30,36 @@ class Daemon:
 
         self.timeout = 10.0  # 超时控制(10s未执行完操作说明卡住)
 
+        self.fps = 30
+
+        self.running = True
+
+        self.data_lock = threading.Lock()
+        self.pre_action: Union[Any, Dict[str, Any]] = None
+        self.obs_action: Union[Any, Dict[str, Any]] = None
+        self.observation: Union[Any, Dict[str, Any]] = None
+
+    @property
+    def cameras_info(self):
+        cameras = {}
+        for name, camera in self.robot.cameras.items():
+            if hasattr(camera, "camera_index"):
+                cameras[name] = camera.camera_index
+            elif hasattr(camera, "index_or_path"):
+                cameras[name] = camera.index_or_path
+        return cameras
+    
+    def start(self):
+        if not self.robot.is_connected:
+            self.robot.connect()
+        logger.info("Connect robot success")
+
+    def stop(self):
+        pass
+
     def execute_motion(self, target_pos, target_quat, steps=60, gripper_pos=100):
         start_time = time.time()
+        current_idx = 0
 
         #从obs中获取从臂当前pose
         obs = self.robot.get_observation()
@@ -68,8 +98,8 @@ class Daemon:
             obs_unuse_pos, obs_unuse_quat = get_pose_from_observation(obs, self.unuse_arm)
 
             if self.state == 'MOVING':
-                if self.current_idx < len(self.trajectory):
-                    pos, quat = self.trajectory[self.current_idx]
+                if current_idx < len(self.trajectory):
+                    pos, quat = self.trajectory[current_idx]
 
                     use_action = create_action(pos, quat, obs_use_gripper, use_arm=self.use_arm)
                     unuse_action = create_action(obs_unuse_pos, obs_unuse_quat, obs_unuse_gripper, use_arm=self.unuse_arm)
@@ -77,7 +107,7 @@ class Daemon:
 
                     self.robot.send_action(action)
 
-                    self.current_idx += 1
+                    current_idx += 1
                 else:
                     self.state = 'STABILIZING'
                     logger.info("Trajectory finished. Waiting for arm to stabilize...")
@@ -138,4 +168,80 @@ class Daemon:
                 return False
         
         return True
+    
+    def update(self):
+        start_loop_t = time.perf_counter()
+
+        if hasattr(self.robot, "teleop_step"):
+            observation, action = self.robot.teleop_step(record_data=True)
+
+            self.set_observation(observation)
+            self.set_obs_action(action)
+
+        else:
+            observation = self.robot.get_observation()
+            self.set_observation(observation)
+
+        # status = safe_update_status(self.robot)
+        # self.set_status(status)
+
+        pre_action = self.get_pre_action()
+        if pre_action is not None:
+            action = self.robot.send_action(pre_action)
+            # action = {"action": action}
+
+        dt_s = time.perf_counter() - start_loop_t
+        if self.fps is not None:
+            time.sleep(1 / self.fps - dt_s)
+
+        # log_control_info(self.robot, dt_s, fps=self.fps)
+
+    def set_pre_action(self, value: Union[Any, Dict[str, Any]]):
+        with self.data_lock:
+            if value is None:
+                return
+            self.pre_action = value.copy()
+
+    def set_obs_action(self, value: Union[Any, Dict[str, Any]]):
+        with self.data_lock:
+            if value is None:
+                return
+            self.obs_action = value.copy()
+
+    def set_observation(self, value: Union[Any, Dict[str, Any]]):
+        with self.data_lock:
+            if value is None:
+                return
+            self.observation = value.copy()
+
+    def set_status(self, value: Optional[str]):
+        with self.data_lock:
+            if value is None:
+                return
+            self.status = value
+
+    def get_pre_action(self) -> Union[Any, Dict[str, Any]]:
+        with self.data_lock:
+            if self.pre_action is None:
+                return None
+            return self.pre_action.copy()
+
+    def get_obs_action(self) -> Union[Any, Dict[str, Any]]:
+        with self.data_lock:
+            if self.obs_action is None:
+                return None
+            return self.obs_action.copy()
+
+    def get_observation(self) -> Union[Any, Dict[str, Any]]:
+        with self.data_lock:
+            if self.observation is None:
+                return None
+            return self.observation.copy()
+
+    def get_status(self) -> Optional[str]:
+        with self.data_lock:
+            if self.status is None:
+                return None
+            return self.status
+
         

@@ -13,6 +13,8 @@ from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 from roboautotask.utils.pose import load_pose_from_file
 from roboautotask.utils.math import generate_random_points_around_center, obj_is_in_placement
 from roboautotask.scripts.robo_reset import reset
+from roboautotask.camera.realsense import RealsenseCameraClientNode
+from roboautotask.estimation.target import TargetDetection
 
 
 logger = logging_mp.get_logger(__name__)
@@ -24,8 +26,10 @@ class MotionConfig:
 
 
 class MotionExecutor:
-    def __init__(self, cfg: MotionConfig, daemon: Daemon):
+    def __init__(self, cfg: MotionConfig, daemon: Daemon, camera: RealsenseCameraClientNode, target_detection: TargetDetection):
         self.daemon = daemon
+        self.target_detection = target_detection
+        self.camera = camera
         with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
@@ -37,11 +41,12 @@ class MotionExecutor:
         place_item = self.cfg['items'].get(place_id)
         if (not grab_item) or (not place_item): return 0
 
-        print(f">>> Task: {grab_item['name']} (ID: {grab_id})")
+        logger.info(f">>> Task: grab_item['name'] : {grab_item['name']} (ID: {grab_id})")
+        logger.info(f">>> Task: grab_item['label'] : {grab_item['label']} (ID: {grab_id})")
 
         # 1. 定位：获取物体在基座坐标系下的原始位置
         if 'label' in grab_item:
-            cam_point = capture_target_coordinate(grab_item['label'])
+            cam_point = self.target_detection.capture_target_coordinate(target_class = grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
@@ -49,9 +54,9 @@ class MotionExecutor:
 
 
         # 获取放置物在基座坐标系下的原始位置
-        print(f">>> Task: {place_item['name']} (ID: {place_id})")
+        logger.info(f">>> Task: {place_item['name']} (ID: {place_id})")
         if 'label' in place_item:
-            place_cam_point = capture_target_coordinate(place_item['label'])
+            place_cam_point = self.target_detection.capture_target_coordinate(target_class = place_item['label'], camera=self.camera)
             if place_cam_point is None: return 0
             place_robot_point_raw = transform_cam_to_robot(place_cam_point)
         else:
@@ -121,7 +126,7 @@ class MotionExecutor:
 
         # 1. 定位：获取抓取物体在基座坐标系下的原始位置
         if 'label' in grab_item:
-            cam_point = capture_target_coordinate(grab_item['label'])
+            cam_point = self.target_detection.capture_target_coordinate(target_class=grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
@@ -207,7 +212,7 @@ class MotionExecutor:
         if not item: return False
 
         if 'label' in item:
-            cam_point = capture_target_coordinate(item['label'])
+            cam_point = self.target_detection.capture_target_coordinate(target_class=item['label'], camera=self.camera)
             if cam_point is None: return False
             robot_point_raw = transform_cam_to_robot(cam_point)
 
