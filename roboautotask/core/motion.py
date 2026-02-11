@@ -220,7 +220,7 @@ class MotionExecutor:
             return False
 
         logger.info(f"rand_pos: {rand_pos} ")
-        final_pos, final_quat = get_target_flange_pose(s_p, rand_pos, offset_x=0.08)
+        final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
         self.daemon.execute_motion(final_pos, final_quat, 100)

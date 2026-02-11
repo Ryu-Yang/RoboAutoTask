@@ -6,6 +6,7 @@ from roboautotask.configs.robot import ROBOT_START_POS
 
 from roboautotask.utils import math
 
+
 def transform_cam_to_robot(point_cam):
     """
     对应原 SVD_get_target.py
@@ -75,7 +76,6 @@ def get_target_flange_pose(target_obj_pos, offset_x):
     
     return final_pos, final_quat
 
-
 def get_pose_from_observation(observation: dict[str, Any], filt_name):
     """
     从 RoboDriver 机器人的observation中读取pose
@@ -125,3 +125,30 @@ def get_pose_from_observation(observation: dict[str, Any], filt_name):
             quat[3] = float(data)
 
     return pos, quat
+
+def get_gripper_from_observation(observation: dict[str, Any], filt_name):
+    """
+    从 RoboDriver 机器人的observation中读取gripper
+    """
+    gripper = np.zeros(1)
+
+    for name, data in observation.items():
+        if "gripper" in name and filt_name in name:
+            gripper = float(data)
+            break
+
+    return gripper
+
+def create_action(pos, quat, gripper, use_arm):
+    action = {}
+
+    action[f"{use_arm}_arm_pos_x_m"] = pos[0]
+    action[f"{use_arm}_arm_pos_y_m"] = pos[1]
+    action[f"{use_arm}_arm_pos_z_m"] = pos[2]
+    action[f"{use_arm}_arm_quat_w"] = quat[3]
+    action[f"{use_arm}_arm_quat_x"] = quat[0]
+    action[f"{use_arm}_arm_quat_y"] = quat[1]
+    action[f"{use_arm}_arm_quat_z"] = quat[2]
+    action[f"{use_arm}_gripper_percent"] = gripper
+
+    return action
