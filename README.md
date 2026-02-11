@@ -34,3 +34,6 @@ ros2 launch realsense2_camera rs_launch.py \
     depth_module.depth_profile:=640,480,30 \
     rgb_camera.color_profile:=640,480,30
 ```
+```bash
+roboautotask-run --robot.type=galaxea_lite_eepose_ros2 --operator.task_id=1188 --operator.user=xuyihao --operator.password=Xuyihao@2026 --motion.config_path=motions.yaml
+```

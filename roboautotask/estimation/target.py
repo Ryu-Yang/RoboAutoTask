@@ -33,13 +33,13 @@ class TargetDetection():
         self.model = YOLO(yolo_model_path)
         logger.info(f"Load YOLO success")
         
-        # 检查类别
-        names = self.model.names
-        cls_target = [k for k, v in names.items() if v.lower() == target_class.lower()]
-        if not cls_target:
-            raise ValueError(f"类别 '{target_class}' 不在模型中！")
-        self.cls_target = cls_target[0]
-        logger.info(f"Target class: {target_class} (ID: {self.cls_target})")
+        # # 检查类别
+        # names = self.model.names
+        # cls_target = [k for k, v in names.items() if v.lower() == target_class.lower()]
+        # if not cls_target:
+        #     raise ValueError(f"类别 '{target_class}' 不在模型中！")
+        # self.cls_target = cls_target[0]
+        # logger.info(f"Target class: {target_class} (ID: {self.cls_target})")
         
         # 状态变量
         self.collected_points = deque(maxlen=confidence_frames * 2)
@@ -99,7 +99,7 @@ class TargetDetection():
         return self.get_3d_pts(color_x, color_y)
     
     
-    def capture_target_coordinate(self, camera=None, timeout=30.0):
+    def capture_target_coordinate(self, target_class, camera=None, timeout=60.0):
         """
         阻塞式获取目标坐标（按需检测版本）
         
@@ -110,7 +110,14 @@ class TargetDetection():
         Returns:
             np.array: 3D坐标 [x, y, z] 或 None（超时或失败）
         """
-        logger.info(f"Starting target capture for '{self.target_class}'...")
+        logger.info(f"Starting target capture for '{target_class}'...")
+
+        # 检查类别
+        names = self.model.names
+        cls_target = [k for k, v in names.items() if v.lower() == target_class.lower()]
+        if not cls_target:
+            raise ValueError(f"类别 '{target_class}' 不在模型中！")
+        self.cls_target = cls_target[0]
         
         # 初始化相机
         if camera is None:
@@ -147,6 +154,7 @@ class TargetDetection():
                 
                 # 获取彩色图像
                 color_image = self.camera.get_color_image()
+                color_image = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
                 if color_image is None:
                     logger.debug("Waiting for color image...")
                     time.sleep(0.033)

@@ -13,6 +13,8 @@ from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 from roboautotask.utils.pose import load_pose_from_file
 from roboautotask.utils.math import generate_random_points_around_center, obj_is_in_placement
 from roboautotask.scripts.robo_reset import reset
+from roboautotask.camera.realsense import RealsenseCameraClientNode
+from roboautotask.estimation.target import TargetDetection
 
 
 logger = logging_mp.get_logger(__name__)
@@ -24,8 +26,10 @@ class MotionConfig:
 
 
 class MotionExecutor:
-    def __init__(self, cfg: MotionConfig, daemon: Daemon):
+    def __init__(self, cfg: MotionConfig, daemon: Daemon, camera: RealsenseCameraClientNode, target_detection: TargetDetection):
         self.daemon = daemon
+        self.target_detection = target_detection
+        self.camera = camera
         with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
@@ -37,11 +41,12 @@ class MotionExecutor:
         place_item = self.cfg['items'].get(place_id)
         if (not grab_item) or (not place_item): return 0
 
-        print(f">>> Task: {grab_item['name']} (ID: {grab_id})")
+        logger.info(f">>> Task: grab_item['name'] : {grab_item['name']} (ID: {grab_id})")
+        logger.info(f">>> Task: grab_item['label'] : {grab_item['label']} (ID: {grab_id})")
 
         # 1. 定位：获取物体在基座坐标系下的原始位置
         if 'label' in grab_item:
-            cam_point = capture_target_coordinate(grab_item['label'])
+            cam_point = self.target_detection.capture_target_coordinate(target_class = grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
@@ -49,9 +54,9 @@ class MotionExecutor:
 
 
         # 获取放置物在基座坐标系下的原始位置
-        print(f">>> Task: {place_item['name']} (ID: {place_id})")
+        logger.info(f">>> Task: {place_item['name']} (ID: {place_id})")
         if 'label' in place_item:
-            place_cam_point = capture_target_coordinate(place_item['label'])
+            place_cam_point = self.target_detection.capture_target_coordinate(target_class = place_item['label'], camera=self.camera)
             if place_cam_point is None: return 0
             place_robot_point_raw = transform_cam_to_robot(place_cam_point)
         else:
@@ -99,14 +104,14 @@ class MotionExecutor:
             offset_x=place_off_x
         )
         # 5. 执行运动与夹爪
-        print(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
-        if not self.daemon.execute_motion(final_pos, final_quat, grab_item['gripper_pos']):
-            reset()
+        logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
+        if not self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos']):
+            reset(self.daemon)
             return 3
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
-        print(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
-        self.daemon.execute_motion(place_final_pos, place_final_quat, place_item['gripper_pos'])
+        logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
+        self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
         
         return self.go_home()
@@ -121,7 +126,7 @@ class MotionExecutor:
 
         # 1. 定位：获取抓取物体在基座坐标系下的原始位置
         if 'label' in grab_item:
-            cam_point = capture_target_coordinate(grab_item['label'])
+            cam_point = self.target_detection.capture_target_coordinate(target_class=grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
@@ -186,17 +191,17 @@ class MotionExecutor:
 
         # 5. 执行运动与夹爪
         print(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
-        self.daemon.execute_motion(final_pos, final_quat, grab_item['gripper_pos'])
+        self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
         print(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
-        self.daemon.execute_motion(place_final_pos, place_final_quat, place_item['gripper_pos'])
+        self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
         
 
         return self.go_home()
 
     def go_home(self):
-        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 100)
+        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 60, 100)
         # robot_driver.set_gripper_position(100)
         return 1
     
@@ -207,7 +212,7 @@ class MotionExecutor:
         if not item: return False
 
         if 'label' in item:
-            cam_point = capture_target_coordinate(item['label'])
+            cam_point = self.target_detection.capture_target_coordinate(target_class=item['label'], camera=self.camera)
             if cam_point is None: return False
             robot_point_raw = transform_cam_to_robot(cam_point)
 
@@ -223,6 +228,6 @@ class MotionExecutor:
         final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
-        self.daemon.execute_motion(final_pos, final_quat, 100)
+        self.daemon.execute_motion(final_pos, final_quat, 60, 100)
         return True
     

@@ -142,13 +142,13 @@ def get_gripper_from_observation(observation: dict[str, Any], filt_name):
 def create_action(pos, quat, gripper, use_arm):
     action = {}
 
-    action[f"{use_arm}_arm_pos_x_m"] = pos[0]
-    action[f"{use_arm}_arm_pos_y_m"] = pos[1]
-    action[f"{use_arm}_arm_pos_z_m"] = pos[2]
-    action[f"{use_arm}_arm_quat_w"] = quat[3]
-    action[f"{use_arm}_arm_quat_x"] = quat[0]
-    action[f"{use_arm}_arm_quat_y"] = quat[1]
-    action[f"{use_arm}_arm_quat_z"] = quat[2]
-    action[f"{use_arm}_gripper_percent"] = gripper
+    action[f"leader_{use_arm}_arm_pos_x_m.pos"] = pos[0]
+    action[f"leader_{use_arm}_arm_pos_y_m.pos"] = pos[1]
+    action[f"leader_{use_arm}_arm_pos_z_m.pos"] = pos[2]
+    action[f"leader_{use_arm}_arm_quat_w.pos"] = quat[3]
+    action[f"leader_{use_arm}_arm_quat_x.pos"] = quat[0]
+    action[f"leader_{use_arm}_arm_quat_y.pos"] = quat[1]
+    action[f"leader_{use_arm}_arm_quat_z.pos"] = quat[2]
+    action[f"leader_{use_arm}_gripper_percent.pos"] = gripper
 
     return action
