@@ -67,10 +67,10 @@ class MotionExecutor:
         line = ' '.join(map(str, line))
         with open('palced_obj_pos.txt', 'w') as f:
             f.write(line)
-        # ---------------- 判断是否需要采集数据 -------------------
-        with open('palced_obj_size.txt', 'r') as f:
-            line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
-            real_w, real_h = map(float, line.split())
+        # # ---------------- 判断是否需要采集数据 -------------------
+        # with open('palced_obj_size.txt', 'r') as f:
+        #     line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
+        #     real_w, real_h = map(float, line.split())
         # 如果物体在放置物里面的话需要丢弃重采
         if obj_is_in_placement(robot_point_raw, place_robot_point_raw):
             return 2
