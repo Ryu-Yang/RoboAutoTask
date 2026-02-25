@@ -153,11 +153,11 @@ class MotionExecutor:
         place_robot_point_raw = [place_x,place_y,place_z]
         place_robot_point_raw = np.array(place_robot_point_raw)
 
-        # ---------------- 判断是否需要重置 -------------------
-        with open('palced_obj_size.txt', 'r') as f:
-            line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
-            real_w, real_h = map(float, line.split())
-        print(robot_point_raw, place_robot_point_raw,real_w,real_h)
+        # # ---------------- 判断是否需要重置 -------------------
+        # with open('palced_obj_size.txt', 'r') as f:
+        #     line = f.readline().strip()  # 读第一行并去除首尾空白（包括换行符）
+        #     real_w, real_h = map(float, line.split())
+        # print(robot_point_raw, place_robot_point_raw,real_w,real_h)
         # 如果物体在放置物里面的话需要丢弃重采
         if not obj_is_in_placement(robot_point_raw, place_robot_point_raw):
             return 2
