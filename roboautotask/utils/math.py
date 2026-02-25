@@ -159,6 +159,7 @@ def quaternion_slerp(q0, q1, t):
 
 def generate_random_points_around_center(
     center_point: List[float],  # 输入的中心点 [x, y, z]
+    target_point: List[float],
     rectangle_width: float = 0.19,  # 矩形区域宽度（x方向）
     rectangle_length: float = 0.4,  # 矩形区域长度（y方向）
     rectangle_height: float = 0.01,   # 矩形区域高度（z方向）
@@ -184,6 +185,7 @@ def generate_random_points_around_center(
     
     # 确保中心点是一个长度为3的列表/数组
     center = np.array(center_point, dtype=float)
+    target = np.array(target_point, dtype=float)
     if len(center) != 3:
         raise ValueError("中心点必须是包含x, y, z三个值的数组")
     
@@ -201,8 +203,8 @@ def generate_random_points_around_center(
         ])
         
         # 计算到中心点在xy平面的距离
-        xy_distance = np.sqrt((rand_point[0] - center[0])**2 + 
-                             (rand_point[1] - center[1])**2)
+        xy_distance = np.sqrt((rand_point[0] - target[0])**2 + 
+                             (rand_point[1] - target[1])**2)
         
         # 排除圆内的点
         if xy_distance <= exclusion_radius:

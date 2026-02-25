@@ -21,57 +21,68 @@ def transform_cam_to_robot(point_cam):
     point_robot = (CALIB_R @ p_cam) + CALIB_T
     return point_robot
 
-def get_target_flange_pose(target_obj_pos, offset_x):
+def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0):
     """
     计算末端法兰的最终位置和姿态。
     
-    坐标系优化说明：
-    1. X轴：由 Home 指向 Target (Approach向量)。
-    2. Z轴：强制向上 (0,0,1)，保证夹爪不发生绕轴旋转（解决90度旋转问题）。
-    3. Y轴：叉乘得到，符合右手定则。
+    坐标系说明：
+    1. X轴：由 Home 指向 Target 的水平方向，再向下俯仰 tilt_angle_deg 度。
+    2. Y轴：叉乘得到，符合右手定则（保持水平，不随俯仰变化）。
+    3. Z轴：由 X cross Y 重新计算，保证三轴正交。
+    
+    Args:
+        target_obj_pos: 目标物体在机器人基座坐标系下的位置 [x, y, z]
+        offset_x: 沿接近方向的回退距离（末端不直接到达目标，提前 offset_x 停下）
+        tilt_angle_deg: 接近方向相对水平面向下倾斜的角度（默认 45°）
+                        0° = 水平抓取，90° = 竖直向下抓取
     """
     # 1. 目标点与参考点
     P_target = np.array(target_obj_pos, dtype=np.float64)
     P_home = np.array(ROBOT_START_POS, dtype=np.float64)
     
-    # 2. 计算接近方向 (X轴)
-    vec_approach = P_target - P_home
-    dist = np.linalg.norm(vec_approach)
-    if dist < 1e-3:
-        ux = np.array([1.0, 0.0, 0.0])
+    # 2. 计算水平接近方向（投影到 XY 平面）
+    vec_horiz = P_target - P_home
+    vec_horiz[2] = 0.0  # 忽略 Z 分量，只取水平方向
+    horiz_dist = np.linalg.norm(vec_horiz)
+    
+    if horiz_dist < 1e-3:
+        # 特殊情况：目标正上方/正下方，默认取 X 轴正方向
+        ux_horiz = np.array([1.0, 0.0, 0.0])
     else:
-        ux = vec_approach / dist # 单位化 X 轴
+        ux_horiz = vec_horiz / horiz_dist  # 单位化水平方向
 
-    # --- 构建符合 [+X前, +Y左, +Z上] 的旋转矩阵 ---
-    
-    # 强制 Z 轴向上 (World Up)
+    # 3. 将水平方向绕 Y 轴（侧轴）向下俯仰 tilt_angle_deg 度
+    #    ux = cos(tilt) * ux_horiz - sin(tilt) * [0,0,1]  (向下为负 Z)
+    tilt_rad = np.deg2rad(tilt_angle_deg)
+    down_world = np.array([0.0, 0.0, -1.0])  # 向下方向
+    ux = np.cos(tilt_rad) * ux_horiz + np.sin(tilt_rad) * down_world
+    ux = ux / np.linalg.norm(ux)  # 单位化（理论上已是单位向量，此处保险）
+
+    # 4. 计算 Y 轴（保持水平，不受俯仰影响）
+    #    uy = world_up cross ux_horiz（基于水平方向，与俯仰无关）
     up_world = np.array([0.0, 0.0, 1.0])
-    
-    # 计算 Y 轴 = Z cross X (根据右手定则: Z向上 cross X向前 = Y向左)
-    uy = np.cross(up_world, ux)
+    uy = np.cross(up_world, ux_horiz)
     norm_y = np.linalg.norm(uy)
     
     if norm_y < 1e-3:
-        # 特殊情况：如果接近方向刚好是垂直向上/向下的
-        uy = np.array([0.0, 1.0, 0.0]) # 默认向左
+        uy = np.array([0.0, 1.0, 0.0])  # 特殊退化情况
     else:
         uy = uy / norm_y
-        
-    # 重新计算正交的 Z 轴 (确保三轴完全正交)
+
+    # 5. 重新计算正交的 Z 轴
     uz = np.cross(ux, uy)
     uz = uz / np.linalg.norm(uz)
     
-    # 构建旋转矩阵 [ux, uy, uz]
+    # 6. 构建旋转矩阵 [ux | uy | uz]
     rot_mat = np.eye(3)
-    rot_mat[:, 0] = ux  # 前
+    rot_mat[:, 0] = ux  # 前（斜向下）
     rot_mat[:, 1] = uy  # 左
-    rot_mat[:, 2] = uz  # 上
+    rot_mat[:, 2] = uz  # 上（随俯仰倾斜）
     
     # 转为四元数 (Scipy format: x, y, z, w)
     final_quat = math.matrix_to_quaternion(rot_mat)
     
-    # --- 计算最终坐标 ---
-    # 沿着指向物体的 ux 方向回退 offset_x
+    # 7. 计算最终坐标：沿斜向接近方向回退 offset_x
     final_pos = P_target - (ux * offset_x)
     
     return final_pos, final_quat

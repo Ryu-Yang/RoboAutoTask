@@ -30,6 +30,7 @@ class MotionExecutor:
         self.daemon = daemon
         self.target_detection = target_detection
         self.camera = camera
+        self.start_center = [0.0, 0.0, 0.0]
         with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
@@ -51,6 +52,9 @@ class MotionExecutor:
             robot_point_raw = transform_cam_to_robot(cam_point)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
+        if self.start_center == [0.0, 0.0, 0.0]:
+            self.start_center = robot_point_raw.tolist()
+            logger.info(f'識別到初始位置:{self.start_center}')
 
 
         # 获取放置物在基座坐标系下的原始位置
@@ -104,13 +108,13 @@ class MotionExecutor:
             offset_x=place_off_x
         )
         # 5. 执行运动与夹爪
-        logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
+        logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_quat:{final_quat}")
         if not self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos']):
             reset(self.daemon)
             return 3
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
-        logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
+        logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, final_quat:{final_quat}")
         self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
         
@@ -160,7 +164,18 @@ class MotionExecutor:
         
 
         # --------------- 判断通过了以后再进行随机点的生成 ------------------
-        place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
+        # place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
+        
+        # --------------- 判断通过了以后再进行随机点的生成 ------------------
+        place_robot_point_raw = generate_random_points_around_center(
+        center_point = self.start_center, 
+        target_point = place_robot_point_raw.tolist(),
+        rectangle_width = 0.10,  # 矩形区域宽度（x方向）
+        rectangle_length = 0.10,  # 矩形区域长度（y方向）
+        rectangle_height = 0.01,   # 矩形区域高度（z方向）
+        exclusion_radius = 0.1,   # 排除圆的半径
+        num_points = 1,           # 要生成的点的数量
+        distribution_power = 0.5)[0]   # 控制概率分布的参数，值越大越靠近外面)[0]
 
         # # 2. 获取当前起始位姿
         # start_pos, start_quat = self._get_current()
@@ -171,7 +186,7 @@ class MotionExecutor:
         robot_point_raw[2] += z_offset
 
         place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset
+        place_robot_point_raw[2] += place_z_offset - 0.05
 
         # 4. 计算末端法兰位姿
         # offset_x 依然用于处理夹爪/物体的距离补偿
@@ -190,11 +205,11 @@ class MotionExecutor:
         )
 
         # 5. 执行运动与夹爪
-        print(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}")
+        logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_quat:{final_quat}")
         self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
-        print(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}")
+        logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, final_quat:{final_quat}")
         self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
         
 
@@ -230,4 +245,3 @@ class MotionExecutor:
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
         self.daemon.execute_motion(final_pos, final_quat, 60, 100)
         return True
-    
