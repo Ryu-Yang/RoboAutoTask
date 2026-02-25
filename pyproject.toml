@@ -15,9 +15,8 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     "logging_mp",
     "playwright",
-    "numpy",
+    "numpy==1.26.4",
     "ultralytics",
-    "pyrealsense2",
 ]
 
 [project.optional-dependencies]
