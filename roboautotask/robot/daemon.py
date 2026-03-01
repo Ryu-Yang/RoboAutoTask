@@ -77,14 +77,21 @@ class Daemon:
         current_idx = 0
 
         #从obs中获取从臂当前pose
-        obs = self.robot.get_observation()
-        start_pos, start_quat = get_pose_from_observation(obs, self.use_arm)    
+        obs = self.robot.get_observation()   
+
+        start_use_gripper = get_gripper_from_observation(obs, self.use_arm)
+        start_use_pos, start_use_quat = get_pose_from_observation(obs, self.use_arm)
+
+        start_unuse_gripper = get_gripper_from_observation(obs, self.unuse_arm)
+        start_unuse_pos, start_unuse_quat = get_pose_from_observation(obs, self.unuse_arm)
+
+        logger.info(f"start_use_gripper: {start_use_gripper}, start_unuse_gripper: {start_unuse_gripper}")
 
         # --- 轨迹生成 ---
         trajectory = []
-        p_start = np.array(start_pos)
+        p_start = np.array(start_use_pos)
         p_end = np.array(target_pos)
-        q_start = np.array(start_quat)
+        q_start = np.array(start_use_quat)
         q_end = np.array(target_quat)
 
         # 抬升参数
@@ -107,17 +114,19 @@ class Daemon:
             obs = self.robot.get_observation()
 
             obs_use_gripper = get_gripper_from_observation(obs, self.use_arm)
-            obs_use_pos, obs_use_quat = get_pose_from_observation(obs, self.use_arm)
+            obs_use_pos, _obs_use_quat = get_pose_from_observation(obs, self.use_arm)
 
-            obs_unuse_gripper = get_gripper_from_observation(obs, self.unuse_arm)
-            obs_unuse_pos, obs_unuse_quat = get_pose_from_observation(obs, self.unuse_arm)
+            # obs_unuse_gripper = get_gripper_from_observation(obs, self.unuse_arm)
+            # obs_unuse_pos, obs_unuse_quat = get_pose_from_observation(obs, self.unuse_arm)
+
+            # logger.info(f"obs_use_gripper: {obs_use_gripper}")
 
             if self.state == 'MOVING':
                 if current_idx < len(trajectory):
                     pos, quat = trajectory[current_idx]
 
-                    use_action = create_action(pos, quat, obs_use_gripper, use_arm=self.use_arm)
-                    unuse_action = create_action(obs_unuse_pos, obs_unuse_quat, obs_unuse_gripper, use_arm=self.unuse_arm)
+                    use_action = create_action(pos, quat, start_use_gripper, use_arm=self.use_arm)
+                    unuse_action = create_action(start_unuse_pos, start_unuse_quat, start_unuse_gripper, use_arm=self.unuse_arm)
                     action = {**use_action, **unuse_action}
 
                     self.robot.send_action(action)
@@ -132,8 +141,8 @@ class Daemon:
             elif self.state == 'STABILIZING':
                 pos, quat = trajectory[-1]
 
-                use_action = create_action(pos, quat, obs_use_gripper, use_arm=self.use_arm)
-                unuse_action = create_action(obs_unuse_pos, obs_unuse_quat, obs_unuse_gripper, use_arm=self.unuse_arm)
+                use_action = create_action(pos, quat, start_use_gripper, use_arm=self.use_arm)
+                unuse_action = create_action(start_unuse_pos, start_unuse_quat, start_unuse_gripper, use_arm=self.unuse_arm)
                 action = {**use_action, **unuse_action}
 
                 self.robot.send_action(action)
@@ -154,7 +163,7 @@ class Daemon:
                 pos, quat = trajectory[-1]
 
                 use_action = create_action(pos, quat, gripper_pos, use_arm=self.use_arm)
-                unuse_action = create_action(obs_unuse_pos, obs_unuse_quat, obs_unuse_gripper, use_arm=self.unuse_arm)
+                unuse_action = create_action(start_unuse_pos, start_unuse_quat, start_unuse_gripper, use_arm=self.unuse_arm)
                 action = {**use_action, **unuse_action}
 
                 self.robot.send_action(action)

@@ -15,7 +15,7 @@ from roboautotask.utils.math import generate_random_points_around_center, obj_is
 from roboautotask.scripts.robo_reset import reset
 from roboautotask.camera.realsense import RealsenseCameraClientNode
 from roboautotask.estimation.target import TargetDetection
-
+from scipy.spatial.transform import Rotation
 
 logger = logging_mp.get_logger(__name__)
 
@@ -23,6 +23,14 @@ logger = logging_mp.get_logger(__name__)
 @dataclass()
 class MotionConfig:
     config_path: str = "tasks.yaml"
+
+
+def view_eular(quaternion_xyzw):
+    # 将四元数转换为欧拉角 (弧度)
+    rotation = Rotation.from_quat(quaternion_xyzw)
+    euler_angles = rotation.as_euler('xyz', degrees=True) # 外旋xyz顺序，对应内旋zyx
+
+    return euler_angles
 
 
 class MotionExecutor:
@@ -80,44 +88,39 @@ class MotionExecutor:
             return 2
 
 
-        # # 2. 获取当前起始位姿
-        # start_pos, start_quat = self._get_current()
-
-        # 3. Z轴偏移处理（基座坐标系下直接叠加）
-        # 比如放置在盘子上方，直接修改 robot_point_raw 的 Z 值
+        ### 运动到物体位置
         z_offset = grab_item.get('offsets', {}).get('z', 0)
         robot_point_raw[2] += z_offset
-
-        place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset
-
-        # 4. 计算末端法兰位姿
-        # offset_x 依然用于处理夹爪/物体的距离补偿
         off_x = grab_item.get('offsets', {}).get('x', 0)
         
+        logger.info(f"target_pos obj: {robot_point_raw}")
         final_pos, final_quat = get_target_flange_pose(
             robot_point_raw, 
             offset_x=off_x
         )
-
-
-        place_off_x = place_item.get('offsets', {}).get('x', 0)
+        final_eular = view_eular(final_quat)
+        logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_pos: {final_pos}, final_quat: {final_quat}, final_eular: {final_eular}")
         
-        place_final_pos, place_final_quat = get_target_flange_pose(
-            place_robot_point_raw, 
-            offset_x=place_off_x
-        )
-        # 5. 执行运动与夹爪
-        logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_quat:{final_quat}")
         if not self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos']):
             reset(self.daemon)
             return 3
-        # robot_driver.set_gripper_position(item['gripper_pos'])
-
-        logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, final_quat:{final_quat}")
-        self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
-        # robot_driver.set_gripper_position(item['gripper_pos'])
         
+
+        ### 运动到放置位置
+        place_z_offset = place_item.get('offsets', {}).get('z', 0)
+        place_robot_point_raw[2] += place_z_offset
+        place_off_x = place_item.get('offsets', {}).get('x', 0)
+
+        logger.info(f"target_pos place: {place_robot_point_raw}")
+        place_final_pos, place_final_quat = get_target_flange_pose(
+            place_robot_point_raw,
+            offset_x=place_off_x
+        )
+        place_final_eular = view_eular(place_final_quat)
+        logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, place_final_pos: {place_final_pos}, place_final_quat:{place_final_quat}, place_final_eular: {place_final_eular}")
+        
+        self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
+
         return self.go_home()
 
     def reset(self, grab_id, place_id):
