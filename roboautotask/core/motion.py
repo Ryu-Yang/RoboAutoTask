@@ -101,7 +101,7 @@ class MotionExecutor:
         final_eular = view_eular(final_quat)
         logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_pos: {final_pos}, final_quat: {final_quat}, final_eular: {final_eular}")
         
-        if not self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos']):
+        if not self.daemon.execute_motion(final_pos, final_quat, 1200, grab_item['gripper_pos']):
             reset(self.daemon)
             return 3
         
@@ -119,7 +119,7 @@ class MotionExecutor:
         place_final_eular = view_eular(place_final_quat)
         logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, place_final_pos: {place_final_pos}, place_final_quat:{place_final_quat}, place_final_eular: {place_final_eular}")
         
-        self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
+        self.daemon.execute_motion(place_final_pos, place_final_quat, 1200, place_item['gripper_pos'])
 
         return self.go_home()
 
@@ -209,17 +209,17 @@ class MotionExecutor:
 
         # 5. 执行运动与夹爪
         logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_quat:{final_quat}")
-        self.daemon.execute_motion(final_pos, final_quat, 60, grab_item['gripper_pos'])
+        self.daemon.execute_motion(final_pos, final_quat, 1200, grab_item['gripper_pos'])
         # robot_driver.set_gripper_position(item['gripper_pos'])
 
         logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, final_quat:{final_quat}")
-        self.daemon.execute_motion(place_final_pos, place_final_quat, 60, place_item['gripper_pos'])
+        self.daemon.execute_motion(place_final_pos, place_final_quat, 1200, place_item['gripper_pos'])
         
 
         return self.go_home()
 
     def go_home(self):
-        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 60, 100)
+        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 1200, 100)
         # robot_driver.set_gripper_position(100)
         return 1
     
@@ -246,5 +246,5 @@ class MotionExecutor:
         final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
-        self.daemon.execute_motion(final_pos, final_quat, 60, 100)
+        self.daemon.execute_motion(final_pos, final_quat, 1200, 100)
         return True

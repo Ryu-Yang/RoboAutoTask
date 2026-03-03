@@ -72,7 +72,7 @@ class Daemon:
     def stop(self):
         pass
 
-    def execute_motion(self, target_pos, target_quat, steps=60, gripper_pos=100):
+    def execute_motion(self, target_pos, target_quat, steps=1200, gripper_pos=100):
         start_time = time.time()
         current_idx = 0
 
@@ -190,7 +190,7 @@ class Daemon:
                 break
             
             fps_spend_time = time.perf_counter() - fps_start_time
-            time.sleep(1 / 10 - fps_spend_time)
+            time.sleep(1 / 200 - fps_spend_time)
 
             elapsed_total = time.time() - start_time
             if elapsed_total > self.timeout:
