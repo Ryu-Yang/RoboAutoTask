@@ -13,7 +13,7 @@ authors = [
 ]
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "logging_mp",
+    "logging_mp==0.1.6",
     "playwright",
     "numpy==1.26.4",
     "ultralytics",
