@@ -1,0 +1,30 @@
+[build-system]
+requires = ["uv>=0.1.0", "setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RoboAutoTask"
+version = "0.0.1"
+description = ""
+readme = "README.md"
+authors = [
+    { name = "Yihao Xu", email = "tdcqxyh@outlook.com" },
+    { name = "Xiang Yang", email = "ryu-yang@qq.com" }
+]
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "logging_mp",
+    "playwright",
+    "numpy==1.26.4",
+    "ultralytics",
+]
+
+[project.optional-dependencies]
+
+[project.scripts]
+roboautotask-run="roboautotask.scripts.run:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["roboautotask*"]
+exclude = []

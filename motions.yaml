@@ -1,0 +1,73 @@
+# 统一对象池
+items:
+  2:
+    name: "orange"
+    label: "orange"
+    offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
+    gripper_pos: 20        # 抓取时闭合到20
+  -2:
+    name: "book"
+    label: "book"
+    offsets: {x: 0.08, y: 0, z: 0.12} # 放置在书上方10cm，ee前8cm处对准物体识别中心
+    gripper_pos: 100       # 放置时打开到100
+  3:
+    name: "cup"
+    label: "cup"
+    offsets: {x: 0.03, y: 0, z: 0}
+    gripper_pos: 30
+  -3:
+    name: "yellow bascket"
+    label: "yellow bascket"
+    offsets: {x: 0.08, y: 0, z: 0.02}
+    gripper_pos: 100
+  4:
+    name: "grapes"
+    label: "grapes"
+    offsets: {x: 0.03, y: 0, z: 0} # ee前3cm处对准物体识别中心
+    gripper_pos: 20        # 抓取时闭合到20
+  -4:
+    name: "bin"
+    pos: [0.4, -0.2, 0.2]  # 也可以是固定坐标
+    quat: [0, 0, 0, 1]
+    offsets: {x: 0, y: 0, z: 0.05}
+    gripper_pos: 100
+  5:
+    name: "yellow lemon"
+    label: "yellow lemon"
+    offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
+    gripper_pos: 20   
+  6:
+    name: "red apple"
+    label: "red apple"
+    offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
+    gripper_pos: 20   
+  7:
+    name: "golden pear"
+    label: "golden pear"
+    offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
+    gripper_pos: 20   
+  8:
+    name: "cake "
+    label: "cake"
+    offsets: {x: 0.02, y: 0.00, z: 0.01} # ee前5cm处对准物体识别中心
+    gripper_pos: 20   
+  9:
+    name: "mouse"
+    label: "mouse"
+    offsets: {x: 0.02, y: 0.00, z: 0.03} # ee前5cm处对准物体识别中心
+    gripper_pos: 20  
+  -9:
+    name: "gray pink mouse pad"
+    label: "gray pink mouse pad"
+    offsets: {x: 0.02, y: 0, z: 0.05}
+    gripper_pos: 100 
+  10:
+    name: "red object"
+    label: "red object"
+    offsets: {x: 0.02, y: 0.00, z: 0.04} # ee前5cm处对准物体识别中心
+    gripper_pos: 20  
+  
+
+special_actions:
+  0: "home"
+  1: "random-pose"
