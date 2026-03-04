@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 import time
+import yaml
+import os
 from collections import deque
 
 from roboautotask.configs.estimation import TARGET_CLASS, YOLO_MODEL_PATH, CONFIDENCE_FRAMES
@@ -112,12 +114,63 @@ class TargetDetection():
         """
         logger.info(f"Starting target capture for '{target_class}'...")
 
-        # 检查类别
-        names = self.model.names
-        cls_target = [k for k, v in names.items() if v.lower() == target_class.lower()]
-        if not cls_target:
-            raise ValueError(f"类别 '{target_class}' 不在模型中！")
-        self.cls_target = cls_target[0]
+        # 读取motions.yaml获取label
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+            # actually checking the directory structure
+            # based on file path: /home/user/Documents/Works/RoboAutoTask/roboautotask/estimation/target.py
+            # current_dir: .../estimation/
+            # .../roboautotask/
+            # .../RoboAutoTask/
+            yaml_path = os.path.join(os.path.dirname(os.path.dirname(current_dir)), 'motions.yaml')
+            
+            with open(yaml_path, 'r', encoding='utf-8') as f:
+                motions_config = yaml.safe_load(f)
+            
+            target_label = None
+            items = motions_config.get('items', {})
+            
+            # 首先尝试直接匹配target_class作为key (如果它是ID)
+            try:
+                target_id = int(target_class)
+                if target_id in items:
+                    target_label = items[target_id].get('label')
+            except (ValueError, TypeError):
+                pass
+            
+            # 如果没找到，尝试匹配name
+            if target_label is None:
+                for k, v in items.items():
+                    if isinstance(v, dict) and v.get('name') == target_class:
+                        target_label = v.get('label')
+                        break
+            
+            if target_label is None:
+                # 如果没在yaml里找到，尝试直接使用target_class作为label
+                logger.warning(f"Could not find label for '{target_class}' in motions.yaml, using '{target_class}' as label.")
+                target_label = target_class
+                
+            logger.info(f"Using label '{target_label}' for target '{target_class}'")
+            
+            # 设置模型的classes
+            self.model.set_classes([target_label])
+            # 由于只设置了一个类，所以目标的类ID应该是0
+            self.cls_target = 0
+            
+        except Exception as e:
+            logger.error(f"Error setting up model classes: {e}")
+            # fall back to original logic if simple class name
+            try:
+                # 检查类别
+                names = self.model.names
+                cls_target = [k for k, v in names.items() if v.lower() == str(target_class).lower()]
+                if not cls_target:
+                    raise ValueError(f"类别 '{target_class}' 不在模型中！")
+                self.cls_target = cls_target[0]
+                logger.info(f"Target class: {target_class} (ID: {self.cls_target})")
+            except:
+                raise ValueError(f"Failed to setup model for '{target_class}': {e}")
         
         # 初始化相机
         if camera is None:

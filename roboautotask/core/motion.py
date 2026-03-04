@@ -1,3 +1,5 @@
+import cv2
+import time
 import numpy as np
 import yaml
 import logging_mp
@@ -167,18 +169,21 @@ class MotionExecutor:
         
 
         # --------------- 判断通过了以后再进行随机点的生成 ------------------
-        # place_robot_point_raw = generate_random_points_around_center(center_point=place_robot_point_raw.tolist())[0]
-        
-        # --------------- 判断通过了以后再进行随机点的生成 ------------------
-        place_robot_point_raw = generate_random_points_around_center(
-        center_point = self.start_center, 
-        target_point = place_robot_point_raw.tolist(),
-        rectangle_width = 0.10,  # 矩形区域宽度（x方向）
-        rectangle_length = 0.10,  # 矩形区域长度（y方向）
-        rectangle_height = 0.01,   # 矩形区域高度（z方向）
-        exclusion_radius = 0.1,   # 排除圆的半径
-        num_points = 1,           # 要生成的点的数量
-        distribution_power = 0.5)[0]   # 控制概率分布的参数，值越大越靠近外面)[0]
+        # 优先使用用户在相机画面中手动框选的区域
+        region_point = self._sample_reset_point_from_region()
+        if region_point is not None:
+            place_robot_point_raw = region_point
+        else:
+            # 备用：使用原有随机中心点生成方法
+            place_robot_point_raw = generate_random_points_around_center(
+                center_point=self.start_center,
+                target_point=place_robot_point_raw.tolist(),
+                rectangle_width=0.10,
+                rectangle_length=0.10,
+                rectangle_height=0.01,
+                exclusion_radius=0.1,
+                num_points=1,
+                distribution_power=0.5)[0]
 
         # # 2. 获取当前起始位姿
         # start_pos, start_quat = self._get_current()
@@ -189,7 +194,7 @@ class MotionExecutor:
         robot_point_raw[2] += z_offset
 
         place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset - 0.05
+        place_robot_point_raw[2] += place_z_offset + 0.02
 
         # 4. 计算末端法兰位姿
         # offset_x 依然用于处理夹爪/物体的距离补偿
@@ -217,6 +222,92 @@ class MotionExecutor:
         
 
         return self.go_home()
+
+    def setup_reset_region(self):
+        """打开相机画面，让用户手动框选重置放置区域，保存到 reset_region.txt
+        
+        操作说明:
+          - 鼠标左键拖动画出矩形区域
+          - 按 Enter / 空格键 确认选择
+          - 按 C 取消
+        """
+        logger.info("将弹出相机画面，请用鼠标拖动框选重置放置区域，按 Enter 确认，按 C 取消")
+
+        # 等待相机就绪
+        color_img = None
+        for _ in range(50):
+            color_img = self.camera.color_image
+            if color_img is not None:
+                break
+            time.sleep(0.1)
+
+        if color_img is None:
+            logger.error("无法获取相机画面，放弃区域选择")
+            return False
+
+        # 转 BGR 供 cv2 显示
+        display_img = cv2.cvtColor(color_img, cv2.COLOR_RGB2BGR)
+
+        cv2.namedWindow("Select Reset Region", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Select Reset Region", 800, 600)
+        roi = cv2.selectROI("Select Reset Region", display_img, fromCenter=False, showCrosshair=True)
+        cv2.destroyWindow("Select Reset Region")
+
+        x, y, w, h = roi
+        if w == 0 or h == 0:
+            logger.warning("未选择有效区域，将使用原有随机方法")
+            return False
+
+        u1, v1, u2, v2 = x, y, x + w, y + h
+        with open('reset_region.txt', 'w') as f:
+            f.write(f"{u1} {v1} {u2} {v2}\n")
+
+        # 在图上画出选定区域并预览
+        preview = display_img.copy()
+        cv2.rectangle(preview, (u1, v1), (u2, v2), (0, 255, 0), 2)
+        cv2.putText(preview, f"Reset region: ({u1},{v1})-({u2},{v2})",
+                    (u1, max(v1 - 8, 12)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        cv2.namedWindow("Reset Region Preview", cv2.WINDOW_NORMAL)
+        cv2.imshow("Reset Region Preview", preview)
+        logger.info(f"重置区域已保存: u1={u1}, v1={v1}, u2={u2}, v2={v2}")
+        logger.info("按任意键关闭预览窗口")
+        cv2.waitKey(0)
+        cv2.destroyWindow("Reset Region Preview")
+        return True
+
+    def _sample_reset_point_from_region(self, max_attempts: int = 50):
+        """从 reset_region.txt 指定的像素区域内随机采样一个有效的机器人坐标。
+
+        返回
+        ------
+        np.ndarray [x, y, z] 机器人基座标系坐标，或 None（文件不存在/深度无效）
+        """
+        try:
+            with open('reset_region.txt', 'r') as f:
+                u1, v1, u2, v2 = map(int, f.readline().strip().split())
+        except FileNotFoundError:
+            logger.warning("reset_region.txt 不存在，将使用原有随机方法")
+            return None
+
+        for attempt in range(max_attempts):
+            u = int(np.random.uniform(u1, u2))
+            v = int(np.random.uniform(v1, v2))
+
+            # pixel_to_3d 读取内部深度图，返回相机坐标系 [x_right, y_down, z_front]
+            point_3d = self.camera.pixel_to_3d(u, v)
+            if point_3d is None:
+                continue
+
+            # 与 get_3d_pts 相同的坐标系转换：+X=前, +Y=左, +Z=上
+            x_cam, y_cam, z_cam = point_3d
+            cam_point = np.array([z_cam, -x_cam, -y_cam])
+
+            robot_point = transform_cam_to_robot(cam_point)
+            logger.info(f"区域采样点 pixel=({u},{v}) -> robot={robot_point.tolist()}")
+            return robot_point
+
+        logger.error(f"经过 {max_attempts} 次尝试后未能在区域内找到有效深度点")
+        return None
 
     def go_home(self):
         self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 1200, 100)
