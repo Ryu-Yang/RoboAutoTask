@@ -147,7 +147,7 @@ def run(cfg: ControlPipelineConfig):
     try:
         while True:
             ### 执行采集任务
-            motion_sequence = [[10, -9]]
+            motion_sequence = [[11, -3]]
 
             # 这是抓取&放置一套流程；抓取物&放置物并发识别；
             for sid in motion_sequence:

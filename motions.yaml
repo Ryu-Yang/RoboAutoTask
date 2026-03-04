@@ -66,7 +66,17 @@ items:
     label: "red object"
     offsets: {x: 0.02, y: 0.00, z: 0.04} # ee前5cm处对准物体识别中心
     gripper_pos: 20  
-  
+  11:
+    name: "magic cube"
+    label: "magic cube"
+    offsets: {x: 0.02, y: 0.00, z: 0.04} # ee前5cm处对准物体识别中心
+    gripper_pos: 20  
+  -11:
+    name: "mint plate"
+    label: "mint plate"
+    offsets: {x: 0.02, y: 0.00, z: 0.04} # ee前5cm处对准物体识别中心
+    gripper_pos: 20  
+
 
 special_actions:
   0: "home"
