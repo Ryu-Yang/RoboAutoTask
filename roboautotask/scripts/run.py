@@ -140,6 +140,8 @@ def run(cfg: ControlPipelineConfig):
     operator = Operator(cfg.operator)
     motion_executor = MotionExecutor(cfg.motion, daemon, camera_node, target_detection)
 
+    motion_executor.setup_reset_region()
+
     operator.login()
 
 
@@ -147,7 +149,7 @@ def run(cfg: ControlPipelineConfig):
     try:
         while True:
             ### 执行采集任务
-            motion_sequence = [[11, -3]]
+            motion_sequence = [[2, -5]]
 
             # 这是抓取&放置一套流程；抓取物&放置物并发识别；
             for sid in motion_sequence:
@@ -166,8 +168,19 @@ def run(cfg: ControlPipelineConfig):
                     operator.destroy_task()
                     operator.quit_task()
 
+                    operator.set_task_id(operator.reset_task_id)
+                    operator.find_task()
+                    operator.exec_task()
+                    operator.start_task()
                     if not motion_executor.reset(grab_id,place_id):
                         logger.info(f"Sequence aborted at reset")
+                        operator.destroy_task()
+                        operator.quit_task()
+                    else:
+                        operator.complete_task()
+                        operator.commit_task()
+                        operator.quit_task()
+                    operator.set_task_id(operator.collect_task_id)
                     logger.info("场景重置完成")
                     break
 
@@ -219,10 +232,21 @@ def run(cfg: ControlPipelineConfig):
                 ### 执行场景重置
                 # motion_sequence = [2, 1, 0]
 
+                operator.set_task_id(operator.reset_task_id)
+                operator.find_task()
+                operator.exec_task()
+                operator.start_task()
                 if not motion_executor.reset(grab_id,place_id):
                     logger.info(f"Sequence aborted at reset")
+                    operator.destroy_task()
+                    operator.quit_task()
+                    operator.set_task_id(operator.collect_task_id)
                     break
-                
+                operator.complete_task()
+                operator.commit_task()
+                operator.quit_task()
+                operator.set_task_id(operator.collect_task_id)
+
                 logger.info("场景重置完成")
 
                 time.sleep(3)

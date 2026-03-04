@@ -1,8 +1,8 @@
 # 统一对象池
 items:
   2:
-    name: "orange"
-    label: "orange"
+    name: "an orange object"
+    label: "an orange object"
     offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
     gripper_pos: 20        # 抓取时闭合到20
   -2:
@@ -16,8 +16,8 @@ items:
     offsets: {x: 0.03, y: 0, z: 0}
     gripper_pos: 30
   -3:
-    name: "yellow bascket"
-    label: "yellow bascket"
+    name: "yellow basket"
+    label: "yellow basket"
     offsets: {x: 0.08, y: 0, z: 0.02}
     gripper_pos: 100
   4:
@@ -36,6 +36,11 @@ items:
     label: "yellow lemon"
     offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
     gripper_pos: 20   
+  -5:
+    name: "a white round plate"
+    label: "a white round plate"
+    offsets: {x: 0.02, y: 0, z: 0.05}
+    gripper_pos: 100 
   6:
     name: "red apple"
     label: "red apple"

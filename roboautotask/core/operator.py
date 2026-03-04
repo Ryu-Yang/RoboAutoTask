@@ -12,6 +12,7 @@ logger = logging_mp.get_logger(__name__)
 @dataclass()
 class OperatorConfig:
     task_id: int
+    reset_task_id: int
     user: str
     password: str
     url: str = "http://localhost:5805/hmi/login"
@@ -34,7 +35,14 @@ class Operator:
 
         self.task = None
         self.task_id = cfg.task_id
+        self.collect_task_id = cfg.task_id
+        self.reset_task_id = cfg.reset_task_id
         self.task_wait_timeout = cfg.task_wait_timeout
+
+    def set_task_id(self, task_id: int):
+        """切换当前操作的任务ID"""
+        self.task_id = task_id
+        logger.info(f"已切换任务ID为: {self.task_id}")
         
     def login(self):
         self.page = self.context.new_page()
