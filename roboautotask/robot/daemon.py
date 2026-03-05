@@ -190,7 +190,9 @@ class Daemon:
                 break
             
             fps_spend_time = time.perf_counter() - fps_start_time
-            time.sleep(1 / 200 - fps_spend_time)
+            sleep_time = 1 / 200 - fps_spend_time
+            if sleep_time >= 0:
+                time.sleep(sleep_time)
 
             elapsed_total = time.time() - start_time
             if elapsed_total > self.timeout:
