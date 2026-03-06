@@ -111,6 +111,8 @@ class MotionExecutor:
         ### 运动到放置位置
         place_z_offset = place_item.get('offsets', {}).get('z', 0)
         place_robot_point_raw[2] += place_z_offset
+        place_y_offset = place_item.get('offsets', {}).get('y', 0)
+        place_robot_point_raw[1] += place_y_offset
         place_off_x = place_item.get('offsets', {}).get('x', 0)
 
         logger.info(f"target_pos place: {place_robot_point_raw}")
@@ -194,7 +196,7 @@ class MotionExecutor:
         robot_point_raw[2] += z_offset
 
         place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset + 0.02
+        place_robot_point_raw[2] += place_z_offset - 0.03
 
         # 4. 计算末端法兰位姿
         # offset_x 依然用于处理夹爪/物体的距离补偿
