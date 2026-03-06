@@ -89,6 +89,7 @@ async def record(daemon, stop_event):
 @parser.wrap()
 def run(cfg: ControlPipelineConfig):
     logger.info(pformat(asdict(cfg)))
+    logger.info(f"=== Arm selection: '{cfg.motion.arm}' ===  (change with --motion.arm right/left)")
 
     ros2_node_manager = ROS2_NodeManager()
 

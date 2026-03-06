@@ -25,6 +25,7 @@ logger = logging_mp.get_logger(__name__)
 @dataclass()
 class MotionConfig:
     config_path: str = "tasks.yaml"
+    arm: str = "left"  # 选择手臂：'left' 或 'right'
 
 
 def view_eular(quaternion_xyzw):
@@ -40,7 +41,9 @@ class MotionExecutor:
         self.daemon = daemon
         self.target_detection = target_detection
         self.camera = camera
+        self.arm = cfg.arm
         self.start_center = [0.0, 0.0, 0.0]
+        logger.info(f"MotionExecutor using arm: '{self.arm}'")
         with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
@@ -59,7 +62,7 @@ class MotionExecutor:
         if 'label' in grab_item:
             cam_point = self.target_detection.capture_target_coordinate(target_class = grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
-            robot_point_raw = transform_cam_to_robot(cam_point)
+            robot_point_raw = transform_cam_to_robot(cam_point, arm=self.arm)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
         if self.start_center == [0.0, 0.0, 0.0]:
@@ -72,7 +75,7 @@ class MotionExecutor:
         if 'label' in place_item:
             place_cam_point = self.target_detection.capture_target_coordinate(target_class = place_item['label'], camera=self.camera)
             if place_cam_point is None: return 0
-            place_robot_point_raw = transform_cam_to_robot(place_cam_point)
+            place_robot_point_raw = transform_cam_to_robot(place_cam_point, arm=self.arm)
         else:
             place_robot_point_raw = np.array(place_item['pos'], dtype=float)
         
@@ -139,7 +142,7 @@ class MotionExecutor:
         if 'label' in grab_item:
             cam_point = self.target_detection.capture_target_coordinate(target_class=grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
-            robot_point_raw = transform_cam_to_robot(cam_point)
+            robot_point_raw = transform_cam_to_robot(cam_point, arm=self.arm)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
 
@@ -304,7 +307,7 @@ class MotionExecutor:
             x_cam, y_cam, z_cam = point_3d
             cam_point = np.array([z_cam, -x_cam, -y_cam])
 
-            robot_point = transform_cam_to_robot(cam_point)
+            robot_point = transform_cam_to_robot(cam_point, arm=self.arm)
             logger.info(f"区域采样点 pixel=({u},{v}) -> robot={robot_point.tolist()}")
             return robot_point
 
@@ -325,7 +328,7 @@ class MotionExecutor:
         if 'label' in item:
             cam_point = self.target_detection.capture_target_coordinate(target_class=item['label'], camera=self.camera)
             if cam_point is None: return False
-            robot_point_raw = transform_cam_to_robot(cam_point)
+            robot_point_raw = transform_cam_to_robot(cam_point, arm=self.arm)
 
             rand_pos = generate_random_points_around_center(center_point=robot_point_raw.tolist())[0]
             # 从yaml获取盘子的zoffset，避免放置平面高度过低
