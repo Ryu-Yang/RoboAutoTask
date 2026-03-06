@@ -29,7 +29,7 @@ from roboautotask.utils.pose import save_pose_to_file
 from roboautotask.estimation.target import TargetDetection
 from roboautotask.camera.realsense import RealsenseCameraClientNode
 # from roboautotask.robot.driver import InterpolationDriverNode
-from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
+from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI, get_arm_home_pose
 from roboautotask.configs.topic import (
     CAMERA_COLOR_SUB_TOPIC,
     CAMERA_DEPTH_SUB_TOPIC,
@@ -120,9 +120,12 @@ def run(cfg: ControlPipelineConfig):
 
     # robot.connect()
 
-    save_pose_to_file("./latest_pose.txt", ROBOT_START_POS, ROBOT_START_ORI)
+    arm = cfg.motion.arm  # 'left' 或 'right'
+    _start_pos, _start_ori = get_arm_home_pose(arm)
+    save_pose_to_file("./latest_pose.txt", _start_pos, _start_ori)
     
-    daemon = Daemon(robot)
+    unuse_arm = 'right' if arm == 'left' else 'left'
+    daemon = Daemon(robot, use_arm=arm, unuse_arm=unuse_arm)
     daemon.start()
     target_detection = TargetDetection()
 
@@ -150,7 +153,7 @@ def run(cfg: ControlPipelineConfig):
     try:
         while True:
             ### 执行采集任务
-            motion_sequence = [[2, -3]]
+            motion_sequence = [[6, -5]]
 
             # 这是抓取&放置一套流程；抓取物&放置物并发识别；
             for sid in motion_sequence:

@@ -44,7 +44,7 @@ items:
   6:
     name: "red apple"
     label: "red apple"
-    offsets: {x: 0.02, y: 0.00, z: -0.006} # ee前5cm处对准物体识别中心
+    offsets: {x: 0.00, y: 0.00, z: -0.0} # ee前5cm处对准物体识别中心
     gripper_pos: 20   
   7:
     name: "golden pear"

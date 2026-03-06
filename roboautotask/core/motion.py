@@ -10,7 +10,7 @@ from roboautotask.estimation.sensor import capture_target_coordinate
 from roboautotask.robot.daemon import Daemon
 from roboautotask.robot.utils import transform_cam_to_robot, get_target_flange_pose
 
-from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
+from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI, get_arm_home_pose
 
 from roboautotask.utils.pose import load_pose_from_file
 from roboautotask.utils.math import generate_random_points_around_center, obj_is_in_placement
@@ -42,8 +42,9 @@ class MotionExecutor:
         self.target_detection = target_detection
         self.camera = camera
         self.arm = cfg.arm
+        self.home_pos, self.home_quat = get_arm_home_pose(self.arm)
         self.start_center = [0.0, 0.0, 0.0]
-        logger.info(f"MotionExecutor using arm: '{self.arm}'")
+        logger.info(f"MotionExecutor using arm: '{self.arm}', home_pos: {self.home_pos}")
         with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
@@ -101,7 +102,8 @@ class MotionExecutor:
         logger.info(f"target_pos obj: {robot_point_raw}")
         final_pos, final_quat = get_target_flange_pose(
             robot_point_raw, 
-            offset_x=off_x
+            offset_x=off_x,
+            home_pos=self.home_pos
         )
         final_eular = view_eular(final_quat)
         logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_pos: {final_pos}, final_quat: {final_quat}, final_eular: {final_eular}")
@@ -121,7 +123,8 @@ class MotionExecutor:
         logger.info(f"target_pos place: {place_robot_point_raw}")
         place_final_pos, place_final_quat = get_target_flange_pose(
             place_robot_point_raw,
-            offset_x=place_off_x
+            offset_x=place_off_x,
+            home_pos=self.home_pos
         )
         place_final_eular = view_eular(place_final_quat)
         logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, place_final_pos: {place_final_pos}, place_final_quat:{place_final_quat}, place_final_eular: {place_final_eular}")
@@ -207,14 +210,16 @@ class MotionExecutor:
         
         final_pos, final_quat = get_target_flange_pose(
             robot_point_raw, 
-            offset_x=off_x
+            offset_x=off_x,
+            home_pos=self.home_pos
         )
 
         place_off_x = place_item.get('offsets', {}).get('x', 0)
         
         place_final_pos, place_final_quat = get_target_flange_pose(
             place_robot_point_raw, 
-            offset_x=place_off_x
+            offset_x=place_off_x,
+            home_pos=self.home_pos
         )
 
         # 5. 执行运动与夹爪
@@ -315,8 +320,7 @@ class MotionExecutor:
         return None
 
     def go_home(self):
-        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 1200, 100)
-        # robot_driver.set_gripper_position(100)
+        self.daemon.execute_motion(self.home_pos, self.home_quat, 1200, 100)
         return 1
     
     def go_random_pose(self, center_item_id = -3):
@@ -339,7 +343,7 @@ class MotionExecutor:
             return False
 
         logger.info(f"rand_pos: {rand_pos} ")
-        final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08)
+        final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08, home_pos=self.home_pos)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
         self.daemon.execute_motion(final_pos, final_quat, 1200, 100)

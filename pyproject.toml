@@ -23,6 +23,7 @@ dependencies = [
 
 [project.scripts]
 roboautotask-run="roboautotask.scripts.run:main"
+roboautotask-calibrate="roboautotask.scripts.calibrate:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -29,7 +29,7 @@ def transform_cam_to_robot(point_cam, arm: str = 'left'):
     point_robot = (calib_r @ p_cam) + calib_t
     return point_robot
 
-def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0):
+def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0, home_pos=None):
     """
     计算机器人末端法兰的预抓取姿态（位置 + 四元数）。
     
@@ -63,8 +63,7 @@ def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0):
     # 1. 数据准备与类型转换
     # ------------------------------------------------------------------
     P_target = np.array(target_obj_pos, dtype=np.float64)
-    # 注意：ROBOT_START_POS 需确保已定义，建议改为参数传入以增加函数纯度
-    P_home = np.array(ROBOT_START_POS, dtype=np.float64)
+    P_home = np.array(home_pos if home_pos is not None else ROBOT_START_POS, dtype=np.float64)
     
     # ------------------------------------------------------------------
     # 2. 计算水平接近方向 (确定 Yaw)
