@@ -29,7 +29,7 @@ from roboautotask.utils.pose import save_pose_to_file
 from roboautotask.estimation.target import TargetDetection
 from roboautotask.camera.realsense import RealsenseCameraClientNode
 # from roboautotask.robot.driver import InterpolationDriverNode
-from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI, get_arm_home_pose
+from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
 from roboautotask.configs.topic import (
     CAMERA_COLOR_SUB_TOPIC,
     CAMERA_DEPTH_SUB_TOPIC,
@@ -188,6 +188,12 @@ def run(cfg: ControlPipelineConfig):
                     logger.info("场景重置完成")
                     break
 
+                elif result == 4:
+                    logger.info('放置验证失败，丢弃并重采')
+                    operator.destroy_task()
+                    operator.quit_task()
+                    break
+
                 elif result == 3:
                     logger.info('运动时间超时，需要检查目标物位置！')
                     operator.destroy_task()
@@ -253,7 +259,7 @@ def run(cfg: ControlPipelineConfig):
 
                 logger.info("场景重置完成")
 
-                time.sleep(3)
+                time.sleep(5)
 
     finally:
         operator.stop()

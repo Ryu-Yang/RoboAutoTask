@@ -23,7 +23,7 @@ items:
   4:
     name: "grapes"
     label: "grapes"
-    offsets: {x: 0.03, y: 0, z: 0} # ee前3cm处对准物体识别中心
+    offsets: {x: 0.05, y: 0, z: 0} # ee前3cm处对准物体识别中心
     gripper_pos: 20        # 抓取时闭合到20
   -4:
     name: "bin"
@@ -39,12 +39,12 @@ items:
   -5:
     name: "a white round plate"
     label: "a white round plate"
-    offsets: {x: 0.02, y: 0, z: 0.05}
+    offsets: {x: 0.02, y: 0, z: 0.06}
     gripper_pos: 100 
   6:
     name: "red apple"
     label: "red apple"
-    offsets: {x: 0.00, y: 0.00, z: -0.0} # ee前5cm处对准物体识别中心
+    offsets: {x: 0.03, y: 0.00, z: 0.00} # ee前5cm处对准物体识别中心
     gripper_pos: 20   
   7:
     name: "golden pear"

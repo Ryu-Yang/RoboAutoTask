@@ -36,7 +36,7 @@ ros2 launch realsense2_camera rs_launch.py \
 ```
 
 ```bash
-roboautotask-run --robot.type=galaxea_lite_eepose_ros2 --operator.task_id=1188  --operator.reset_task_id=1188 --operator.user=xuyihao --operator.password=Xuyihao@2026 --motion.config_path=motions.yaml --motion.arm right
+roboautotask-run --robot.type=galaxea_lite_eepose_ros2 --operator.task_id=1188  --operator.reset_task_id=1188 --operator.user=xuyihao --operator.password=Xuyihao@2026 --motion.config_path=motions.yaml --motion.arm=left
 ```
 
 如果使用过程中遇到了卡死或VSCode闪退的情况，请清空 `/dev/shm/*`:

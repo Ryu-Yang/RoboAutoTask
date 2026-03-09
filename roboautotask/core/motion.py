@@ -93,6 +93,8 @@ class MotionExecutor:
         if obj_is_in_placement(robot_point_raw, place_robot_point_raw):
             return 2
 
+        # 保存原始放置中心，用于放置后验证（在偏移量修改前保存）
+        place_center = place_robot_point_raw.copy()
 
         ### 运动到物体位置
         z_offset = grab_item.get('offsets', {}).get('z', 0)
@@ -131,7 +133,24 @@ class MotionExecutor:
         
         self.daemon.execute_motion(place_final_pos, place_final_quat, 1200, place_item['gripper_pos'])
 
-        return self.go_home()
+        # --- 回到home位置，腾出视野以便验证 ---
+        self.daemon.execute_motion(self.home_pos, self.home_quat, 1200, 100)
+
+        # --- 放置完成验证：检测抓取物是否已到达放置区域 ---
+        if 'label' in grab_item:
+            logger.info("放置完成，验证抓取物是否已到达放置区域...")
+            verify_cam_point = self.target_detection.capture_target_coordinate(
+                target_class=grab_item['label'], camera=self.camera)
+            if verify_cam_point is None:
+                logger.warning("放置验证：无法检测到抓取物，视为放置失败，丢弃重采")
+                return 4
+            verify_robot_point = transform_cam_to_robot(verify_cam_point, arm=self.arm)
+            if not obj_is_in_placement(verify_robot_point, place_center):
+                logger.warning(f"放置验证失败：抓取物位于 {verify_robot_point.tolist()}，不在放置区域 {place_center.tolist()}，丢弃重采")
+                return 4
+            logger.info("放置验证成功：抓取物已到达放置区域")
+
+        return 1
 
     def reset(self, grab_id, place_id):
 
@@ -165,6 +184,8 @@ class MotionExecutor:
             place_x,place_y,place_z = map(float, line.split())
         place_robot_point_raw = [place_x,place_y,place_z]
         place_robot_point_raw = np.array(place_robot_point_raw)
+        # 保存复位前目标物所在的放置位置，用于复位后验证
+        reset_place_center = place_robot_point_raw.copy()
 
         # # ---------------- 判断是否需要重置 -------------------
         # with open('palced_obj_size.txt', 'r') as f:
@@ -202,7 +223,7 @@ class MotionExecutor:
         robot_point_raw[2] += z_offset
 
         place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset - 0.03
+        place_robot_point_raw[2] += place_z_offset - 0.01
 
         # 4. 计算末端法兰位姿
         # offset_x 依然用于处理夹爪/物体的距离补偿
@@ -229,9 +250,25 @@ class MotionExecutor:
 
         logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, final_quat:{final_quat}")
         self.daemon.execute_motion(place_final_pos, place_final_quat, 1200, place_item['gripper_pos'])
-        
 
-        return self.go_home()
+        # --- 回到home位置，腾出视野以便验证 ---
+        self.daemon.execute_motion(self.home_pos, self.home_quat, 1200, 100)
+
+        # --- 复位完成验证：检测抓取物是否已离开放置区域 ---
+        if 'label' in grab_item:
+            logger.info("复位完成，验证抓取物是否已离开放置区域...")
+            verify_cam_point = self.target_detection.capture_target_coordinate(
+                target_class=grab_item['label'], camera=self.camera)
+            if verify_cam_point is None:
+                logger.warning("复位验证：无法检测到抓取物，视为复位失败")
+                return 0
+            verify_robot_point = transform_cam_to_robot(verify_cam_point, arm=self.arm)
+            if obj_is_in_placement(verify_robot_point, reset_place_center):
+                logger.warning(f"复位验证失败：抓取物位于 {verify_robot_point.tolist()}，仍在放置区域 {reset_place_center.tolist()}，需重新复位")
+                return 0
+            logger.info("复位验证成功：抓取物已离开放置区域")
+
+        return 1
 
     def setup_reset_region(self):
         """打开相机画面，让用户手动框选重置放置区域，保存到 reset_region.txt
