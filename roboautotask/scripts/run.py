@@ -3,6 +3,7 @@ import cv2
 import argparse
 import logging_mp
 import time
+import yaml
 import numpy as np
 import asyncio
 import threading
@@ -27,6 +28,8 @@ from roboautotask.core.motion import MotionConfig
 from roboautotask.utils.pose import save_pose_to_file
 
 from roboautotask.estimation.target import TargetDetection
+from roboautotask.estimation.opencv_detector import ColorBlobDetector
+from roboautotask.configs.estimation import DETECTION_METHOD
 from roboautotask.camera.realsense import RealsenseCameraClientNode
 # from roboautotask.robot.driver import InterpolationDriverNode
 from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI, get_arm_home_pose
@@ -40,6 +43,30 @@ from roboautotask.configs.topic import (
 
 logging_mp.basic_config(level=logging_mp.INFO)
 logger = logging_mp.get_logger(__name__)
+
+
+def _make_detector(config_path: str):
+    """
+    根据 config_path 对应的 yaml 文件中的 detection_method 字段，
+    创建并返回合适的目标检测器：
+      - "yolo"   → TargetDetection（YOLO 开放词汇检测，默认）
+      - "opencv" → ColorBlobDetector（HSV 色块检测）
+    """
+    method = DETECTION_METHOD  # 代码级默认值
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg_data = yaml.safe_load(f) or {}
+        method = cfg_data.get("detection_method", method)
+    except Exception as e:
+        logger.warning(f"Could not read detection_method from '{config_path}': {e}. Using default '{method}'.")
+
+    logger.info(f"Detection method: '{method}'")
+    if method == "opencv":
+        return ColorBlobDetector(config_path=config_path)
+    else:
+        if method != "yolo":
+            logger.warning(f"Unknown detection_method '{method}', falling back to 'yolo'.")
+        return TargetDetection()
 
 
 @dataclass
@@ -127,7 +154,7 @@ def run(cfg: ControlPipelineConfig):
     unuse_arm = 'right' if arm == 'left' else 'left'
     daemon = Daemon(robot, use_arm=arm, unuse_arm=unuse_arm)
     daemon.start()
-    target_detection = TargetDetection()
+    target_detection = _make_detector(cfg.motion.config_path)
 
     # ===== 新增：创建线程安全队列和停止事件 =====
     # observation_queue = queue.Queue(maxsize=1)  # 只保留最新帧
@@ -146,6 +173,37 @@ def run(cfg: ControlPipelineConfig):
 
     motion_executor.setup_reset_region()
 
+    # ── 预运行 HSV+ROI 调节（仅 opencv 模式）──────────────────────────────
+    _pre_run_ok = True
+    if isinstance(target_detection, ColorBlobDetector):
+        motion_sequence = [[6, -5]]   # 提前定义，用于确定需要调节哪些物品
+        try:
+            with open(cfg.motion.config_path, "r", encoding="utf-8") as _f:
+                _task_cfg = yaml.safe_load(_f) or {}
+            _items = _task_cfg.get("items", {})
+            _tune_names: list[str] = []
+            for _gid, _pid in motion_sequence[:1]:
+                for _iid in [_gid, _pid]:
+                    _item = _items.get(_iid, {})
+                    if isinstance(_item, dict) and "label" in _item:
+                        _n = _item.get("name") or _item.get("label")
+                        if _n and _n not in _tune_names:
+                            _tune_names.append(_n)
+        except Exception as _e:
+            logger.warning(f"Could not determine tune items: {_e}")
+            _tune_names = []
+
+        if _tune_names:
+            logger.info(f"[OpenCV] Pre-run tuning for: {_tune_names}")
+            _pre_run_ok = target_detection.tune_for_task(_tune_names, camera=camera_node)
+        if not _pre_run_ok:
+            logger.info("Pre-run tuning aborted by user. Exiting.")
+            stop_event.set()
+            daemon.stop()
+            ros2_node_manager.stop()
+            return
+    # ────────────────────────────────────────────────────────────────────────
+
     operator.login()
 
 
@@ -162,6 +220,7 @@ def run(cfg: ControlPipelineConfig):
                 operator.find_task()
                 operator.exec_task()
                 operator.start_task()
+                time.sleep(5)  # 等待远端系统预热（start_collection 倒计5s）
 
                 result = motion_executor.execute_by_id(grab_id, place_id)
                 if result == 0:
@@ -176,6 +235,7 @@ def run(cfg: ControlPipelineConfig):
                     operator.find_task()
                     operator.exec_task()
                     operator.start_task()
+                    time.sleep(5)  # 等待远端系统预热
                     if not motion_executor.reset(grab_id,place_id):
                         logger.info(f"Sequence aborted at reset")
                         operator.destroy_task()
@@ -246,6 +306,7 @@ def run(cfg: ControlPipelineConfig):
                 operator.find_task()
                 operator.exec_task()
                 operator.start_task()
+                time.sleep(5)  # 等待远端系统预热
                 if not motion_executor.reset(grab_id,place_id):
                     logger.info(f"Sequence aborted at reset")
                     operator.destroy_task()
