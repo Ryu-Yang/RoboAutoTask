@@ -235,7 +235,8 @@ def run(cfg: ControlPipelineConfig):
                     operator.find_task()
                     operator.exec_task()
                     operator.start_task()
-                    time.sleep(5)  # 等待远端系统预热
+                    if DETECTION_METHOD == "opencv":
+                        time.sleep(5)  # 等待远端系统预热
                     if not motion_executor.reset(grab_id,place_id):
                         logger.info(f"Sequence aborted at reset")
                         operator.destroy_task()
