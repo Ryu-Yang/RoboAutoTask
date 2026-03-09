@@ -29,7 +29,7 @@ from roboautotask.utils.pose import save_pose_to_file
 from roboautotask.estimation.target import TargetDetection
 from roboautotask.camera.realsense import RealsenseCameraClientNode
 # from roboautotask.robot.driver import InterpolationDriverNode
-from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
+from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI, get_arm_home_pose
 from roboautotask.configs.topic import (
     CAMERA_COLOR_SUB_TOPIC,
     CAMERA_DEPTH_SUB_TOPIC,
