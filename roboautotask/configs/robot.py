@@ -9,7 +9,7 @@ ARM_CONFIG = {
         'gripper_sub': topic.LEFT_GRIPPER_SUB,
         'home_pose': {
             'pos': [0.158994, 0.335901, 0.453466],
-            'quat': [0.0038, 0.0018, 0.0058, 0.99997],
+            'quat': [0, 0, 0, 1],
             'gripper': 100.0
         }
     },
@@ -20,7 +20,7 @@ ARM_CONFIG = {
         'gripper_sub': topic.RIGHT_GRIPPER_SUB,
         'home_pose': {
             'pos': [0.158795, -0.337121, 0.4562],
-            'quat': [0.010879, -0.010736, -0.009139, 0.999845],
+            'quat': [0, 0, 0, 1],
             'gripper': 100.0
         }
     }
