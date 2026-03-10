@@ -211,7 +211,7 @@ def run(cfg: ControlPipelineConfig):
     try:
         while True:
             ### 执行采集任务
-            motion_sequence = [[6, -5]]
+            motion_sequence = [[cfg.motion.item_id_record, cfg.motion.item_id_reset]]
 
             # 这是抓取&放置一套流程；抓取物&放置物并发识别；
             for sid in motion_sequence:

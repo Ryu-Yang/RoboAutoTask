@@ -25,6 +25,8 @@ logger = logging_mp.get_logger(__name__)
 @dataclass()
 class MotionConfig:
     config_path: str = "tasks.yaml"
+    item_id_record: int = 2
+    item_id_reset: int = -3
     arm: str = "left"  # 选择手臂：'left' 或 'right'
 
 
