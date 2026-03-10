@@ -28,7 +28,7 @@ realsense-viewer
 
 ```bash
 ros2 launch realsense2_camera rs_launch.py \
-    serial_no:="'343122300046'" \
+    serial_no:="'<your camera sn>'" \
     camera_name:='camera_head' \
     align_depth.enable:=true \
     depth_module.depth_profile:=640,480,30 \
@@ -37,6 +37,10 @@ ros2 launch realsense2_camera rs_launch.py \
 
 ```bash
 roboautotask-run --robot.type=galaxea_lite_eepose_ros2 --operator.task_id=1188  --operator.reset_task_id=1188 --operator.user=xuyihao --operator.password=Xuyihao@2026 --motion.config_path=motions.yaml --motion.arm=left
+```
+
+```bash
+roboautotask-run --robot.type=agilex_aloha_eepose_mix --operator.task_id=1212 --operator.reset_task_id=1215 --operator.user=shenyanci --operator.password=SHENyanci@930 --motion.config_path=motions_aloha.yaml
 ```
 
 如果使用过程中遇到了卡死或VSCode闪退的情况，请清空 `/dev/shm/*`:

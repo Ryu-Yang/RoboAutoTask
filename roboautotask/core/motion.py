@@ -5,7 +5,7 @@ import yaml
 import logging_mp
 from dataclasses import dataclass
 
-from roboautotask.estimation.sensor import capture_target_coordinate
+# from roboautotask.estimation.sensor import capture_target_coordinate
 # from roboautotask.robot.driver import execute_motion
 from roboautotask.robot.daemon import Daemon
 from roboautotask.robot.utils import transform_cam_to_robot, get_target_flange_pose
