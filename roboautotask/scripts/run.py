@@ -176,7 +176,7 @@ def run(cfg: ControlPipelineConfig):
     # ── 预运行 HSV+ROI 调节（仅 opencv 模式）──────────────────────────────
     _pre_run_ok = True
     if isinstance(target_detection, ColorBlobDetector):
-        motion_sequence = [[6, -5]]   # 提前定义，用于确定需要调节哪些物品
+        motion_sequence = [[cfg.motion.item_id_record, cfg.motion.item_id_reset]]   # 提前定义，用于确定需要调节哪些物品
         try:
             with open(cfg.motion.config_path, "r", encoding="utf-8") as _f:
                 _task_cfg = yaml.safe_load(_f) or {}
@@ -220,7 +220,8 @@ def run(cfg: ControlPipelineConfig):
                 operator.find_task()
                 operator.exec_task()
                 operator.start_task()
-                time.sleep(5)  # 等待远端系统预热（start_collection 倒计5s）
+                if isinstance(target_detection, ColorBlobDetector):
+                    time.sleep(5)  # 等待远端系统预热（start_collection 倒计5s）
 
                 result = motion_executor.execute_by_id(grab_id, place_id)
                 if result == 0:
@@ -235,7 +236,7 @@ def run(cfg: ControlPipelineConfig):
                     operator.find_task()
                     operator.exec_task()
                     operator.start_task()
-                    if DETECTION_METHOD == "opencv":
+                    if isinstance(target_detection, ColorBlobDetector):
                         time.sleep(5)  # 等待远端系统预热
                     if not motion_executor.reset(grab_id,place_id):
                         logger.info(f"Sequence aborted at reset")
@@ -307,7 +308,8 @@ def run(cfg: ControlPipelineConfig):
                 operator.find_task()
                 operator.exec_task()
                 operator.start_task()
-                time.sleep(5)  # 等待远端系统预热
+                if isinstance(target_detection, ColorBlobDetector):
+                    time.sleep(5)  # 等待远端系统预热
                 if not motion_executor.reset(grab_id,place_id):
                     logger.info(f"Sequence aborted at reset")
                     operator.destroy_task()

@@ -1,3 +1,5 @@
+detection_method: yolo
+
 # 统一对象池
 items:
   2:
