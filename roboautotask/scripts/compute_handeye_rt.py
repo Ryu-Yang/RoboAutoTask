@@ -6,7 +6,7 @@ import numpy as np
 
 def main():
     # 读取文件（请将 'points.txt' 替换为你的文件路径）
-    data = np.loadtxt('cabrition.txt')
+    data = np.loadtxt('left.txt')
     
     if data.shape[1] != 6:
         raise ValueError("每行必须包含6个数字：x y z X Y Z")

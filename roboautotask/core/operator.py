@@ -148,7 +148,7 @@ class Operator:
             else:
                 button = self.page.locator(f'button.el-button >> text={button_str}')
 
-            button.wait_for(state="visible", timeout=5000)
+            button.wait_for(state="visible", timeout=20000)
             if button.count() > 0:
 
                 button.click()

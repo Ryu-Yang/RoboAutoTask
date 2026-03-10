@@ -10,7 +10,7 @@ from roboautotask.estimation.sensor import capture_target_coordinate
 from roboautotask.robot.daemon import Daemon
 from roboautotask.robot.utils import transform_cam_to_robot, get_target_flange_pose
 
-from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI
+from roboautotask.configs.robot import ROBOT_START_POS, ROBOT_START_ORI, get_arm_home_pose
 
 from roboautotask.utils.pose import load_pose_from_file
 from roboautotask.utils.math import generate_random_points_around_center, obj_is_in_placement
@@ -25,6 +25,7 @@ logger = logging_mp.get_logger(__name__)
 @dataclass()
 class MotionConfig:
     config_path: str = "tasks.yaml"
+    arm: str = "left"  # 选择手臂：'left' 或 'right'
 
 
 def view_eular(quaternion_xyzw):
@@ -40,7 +41,10 @@ class MotionExecutor:
         self.daemon = daemon
         self.target_detection = target_detection
         self.camera = camera
+        self.arm = cfg.arm
+        self.home_pos, self.home_quat = get_arm_home_pose(self.arm)
         self.start_center = [0.0, 0.0, 0.0]
+        logger.info(f"MotionExecutor using arm: '{self.arm}', home_pos: {self.home_pos}")
         with open(cfg.config_path, 'r') as f:
             self.cfg = yaml.safe_load(f)
 
@@ -59,7 +63,7 @@ class MotionExecutor:
         if 'label' in grab_item:
             cam_point = self.target_detection.capture_target_coordinate(target_class = grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
-            robot_point_raw = transform_cam_to_robot(cam_point)
+            robot_point_raw = transform_cam_to_robot(cam_point, arm=self.arm)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
         if self.start_center == [0.0, 0.0, 0.0]:
@@ -72,7 +76,7 @@ class MotionExecutor:
         if 'label' in place_item:
             place_cam_point = self.target_detection.capture_target_coordinate(target_class = place_item['label'], camera=self.camera)
             if place_cam_point is None: return 0
-            place_robot_point_raw = transform_cam_to_robot(place_cam_point)
+            place_robot_point_raw = transform_cam_to_robot(place_cam_point, arm=self.arm)
         else:
             place_robot_point_raw = np.array(place_item['pos'], dtype=float)
         
@@ -89,6 +93,8 @@ class MotionExecutor:
         if obj_is_in_placement(robot_point_raw, place_robot_point_raw):
             return 2
 
+        # 保存原始放置中心，用于放置后验证（在偏移量修改前保存）
+        place_center = place_robot_point_raw.copy()
 
         ### 运动到物体位置
         z_offset = grab_item.get('offsets', {}).get('z', 0)
@@ -98,7 +104,8 @@ class MotionExecutor:
         logger.info(f"target_pos obj: {robot_point_raw}")
         final_pos, final_quat = get_target_flange_pose(
             robot_point_raw, 
-            offset_x=off_x
+            offset_x=off_x,
+            home_pos=self.home_pos
         )
         final_eular = view_eular(final_quat)
         logger.info(f"Moving to target. Base_Z_Offset: {z_offset}, Tool_X_Offset: {off_x}, final_pos: {final_pos}, final_quat: {final_quat}, final_eular: {final_eular}")
@@ -118,14 +125,32 @@ class MotionExecutor:
         logger.info(f"target_pos place: {place_robot_point_raw}")
         place_final_pos, place_final_quat = get_target_flange_pose(
             place_robot_point_raw,
-            offset_x=place_off_x
+            offset_x=place_off_x,
+            home_pos=self.home_pos
         )
         place_final_eular = view_eular(place_final_quat)
         logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, place_final_pos: {place_final_pos}, place_final_quat:{place_final_quat}, place_final_eular: {place_final_eular}")
         
         self.daemon.execute_motion(place_final_pos, place_final_quat, 1200, place_item['gripper_pos'])
 
-        return self.go_home()
+        # --- 回到home位置，腾出视野以便验证 ---
+        self.daemon.execute_motion(self.home_pos, self.home_quat, 1200, 100)
+
+        # --- 放置完成验证：检测抓取物是否已到达放置区域 ---
+        if 'label' in grab_item:
+            logger.info("放置完成，验证抓取物是否已到达放置区域...")
+            verify_cam_point = self.target_detection.capture_target_coordinate(
+                target_class=grab_item['label'], camera=self.camera)
+            if verify_cam_point is None:
+                logger.warning("放置验证：无法检测到抓取物，视为放置失败，丢弃重采")
+                return 4
+            verify_robot_point = transform_cam_to_robot(verify_cam_point, arm=self.arm)
+            if not obj_is_in_placement(verify_robot_point, place_center):
+                logger.warning(f"放置验证失败：抓取物位于 {verify_robot_point.tolist()}，不在放置区域 {place_center.tolist()}，丢弃重采")
+                return 4
+            logger.info("放置验证成功：抓取物已到达放置区域")
+
+        return 1
 
     def reset(self, grab_id, place_id):
 
@@ -139,7 +164,7 @@ class MotionExecutor:
         if 'label' in grab_item:
             cam_point = self.target_detection.capture_target_coordinate(target_class=grab_item['label'], camera=self.camera)
             if cam_point is None: return 0
-            robot_point_raw = transform_cam_to_robot(cam_point)
+            robot_point_raw = transform_cam_to_robot(cam_point, arm=self.arm)
         else:
             robot_point_raw = np.array(grab_item['pos'], dtype=float)
 
@@ -159,6 +184,8 @@ class MotionExecutor:
             place_x,place_y,place_z = map(float, line.split())
         place_robot_point_raw = [place_x,place_y,place_z]
         place_robot_point_raw = np.array(place_robot_point_raw)
+        # 保存复位前目标物所在的放置位置，用于复位后验证
+        reset_place_center = place_robot_point_raw.copy()
 
         # # ---------------- 判断是否需要重置 -------------------
         # with open('palced_obj_size.txt', 'r') as f:
@@ -196,7 +223,7 @@ class MotionExecutor:
         robot_point_raw[2] += z_offset
 
         place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset - 0.03
+        place_robot_point_raw[2] += place_z_offset - 0.01
 
         # 4. 计算末端法兰位姿
         # offset_x 依然用于处理夹爪/物体的距离补偿
@@ -204,14 +231,16 @@ class MotionExecutor:
         
         final_pos, final_quat = get_target_flange_pose(
             robot_point_raw, 
-            offset_x=off_x
+            offset_x=off_x,
+            home_pos=self.home_pos
         )
 
         place_off_x = place_item.get('offsets', {}).get('x', 0)
         
         place_final_pos, place_final_quat = get_target_flange_pose(
             place_robot_point_raw, 
-            offset_x=place_off_x
+            offset_x=place_off_x,
+            home_pos=self.home_pos
         )
 
         # 5. 执行运动与夹爪
@@ -221,9 +250,25 @@ class MotionExecutor:
 
         logger.info(f"Moving to target. Base_Z_Offset: {place_z_offset}, Tool_X_Offset: {place_off_x}, final_quat:{final_quat}")
         self.daemon.execute_motion(place_final_pos, place_final_quat, 1200, place_item['gripper_pos'])
-        
 
-        return self.go_home()
+        # --- 回到home位置，腾出视野以便验证 ---
+        self.daemon.execute_motion(self.home_pos, self.home_quat, 1200, 100)
+
+        # --- 复位完成验证：检测抓取物是否已离开放置区域 ---
+        if 'label' in grab_item:
+            logger.info("复位完成，验证抓取物是否已离开放置区域...")
+            verify_cam_point = self.target_detection.capture_target_coordinate(
+                target_class=grab_item['label'], camera=self.camera)
+            if verify_cam_point is None:
+                logger.warning("复位验证：无法检测到抓取物，视为复位失败")
+                return 0
+            verify_robot_point = transform_cam_to_robot(verify_cam_point, arm=self.arm)
+            if obj_is_in_placement(verify_robot_point, reset_place_center):
+                logger.warning(f"复位验证失败：抓取物位于 {verify_robot_point.tolist()}，仍在放置区域 {reset_place_center.tolist()}，需重新复位")
+                return 0
+            logger.info("复位验证成功：抓取物已离开放置区域")
+
+        return 1
 
     def setup_reset_region(self):
         """打开相机画面，让用户手动框选重置放置区域，保存到 reset_region.txt
@@ -304,7 +349,7 @@ class MotionExecutor:
             x_cam, y_cam, z_cam = point_3d
             cam_point = np.array([z_cam, -x_cam, -y_cam])
 
-            robot_point = transform_cam_to_robot(cam_point)
+            robot_point = transform_cam_to_robot(cam_point, arm=self.arm)
             logger.info(f"区域采样点 pixel=({u},{v}) -> robot={robot_point.tolist()}")
             return robot_point
 
@@ -312,8 +357,7 @@ class MotionExecutor:
         return None
 
     def go_home(self):
-        self.daemon.execute_motion(ROBOT_START_POS, ROBOT_START_ORI, 1200, 100)
-        # robot_driver.set_gripper_position(100)
+        self.daemon.execute_motion(self.home_pos, self.home_quat, 1200, 100)
         return 1
     
     def go_random_pose(self, center_item_id = -3):
@@ -325,7 +369,7 @@ class MotionExecutor:
         if 'label' in item:
             cam_point = self.target_detection.capture_target_coordinate(target_class=item['label'], camera=self.camera)
             if cam_point is None: return False
-            robot_point_raw = transform_cam_to_robot(cam_point)
+            robot_point_raw = transform_cam_to_robot(cam_point, arm=self.arm)
 
             rand_pos = generate_random_points_around_center(center_point=robot_point_raw.tolist())[0]
             # 从yaml获取盘子的zoffset，避免放置平面高度过低
@@ -336,7 +380,7 @@ class MotionExecutor:
             return False
 
         logger.info(f"rand_pos: {rand_pos} ")
-        final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08)
+        final_pos, final_quat = get_target_flange_pose(rand_pos, offset_x=0.08, home_pos=self.home_pos)
 
         logger.info(f"final_pos: {final_pos} , final_quat: {final_quat}")
         self.daemon.execute_motion(final_pos, final_quat, 1200, 100)

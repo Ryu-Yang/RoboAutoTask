@@ -34,6 +34,7 @@ logger = logging_mp.get_logger(__name__)
 @dataclass
 class ControlPipelineConfig:
     robot: RobotConfig
+    arm: str = "left"  # 选择标定手臂：'left' 或 'right'
 
 @parser.wrap()
 def calibrate(cfg: ControlPipelineConfig):
@@ -51,9 +52,12 @@ def calibrate(cfg: ControlPipelineConfig):
     logger.info(f"robot.type: {robot.robot_type}")
 
 
+    arm = cfg.arm
+    logger.info(f"=== Calibrating arm: '{arm}' ===")
+
     out_dir = Path('output')
     out_dir.mkdir(exist_ok=True)
-    csv_path = out_dir / f'arm_aruco_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'
+    csv_path = out_dir / f'arm_aruco_{arm}_{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'
     print(f'Saving to: {csv_path.absolute()}')
 
     calibrator = Calibrator(csv_path)
@@ -88,7 +92,7 @@ def calibrate(cfg: ControlPipelineConfig):
         while True:
             stat_time = time.perf_counter()
             obs = robot.get_observation()
-            arm_pos, arm_ori = get_pose_from_observation(obs, "left")
+            arm_pos, arm_ori = get_pose_from_observation(obs, arm)
             
             detector.clean()
             detector.detect(camera_node.color_image)
@@ -160,3 +164,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+'''usage
+ python roboautotask/scripts/calibrate.py  --robot.type=galaxea_lite_eepose_ros2 --arm=right  
+'''

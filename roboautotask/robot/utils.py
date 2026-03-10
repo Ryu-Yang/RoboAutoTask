@@ -2,7 +2,7 @@ import numpy as np
 from typing import Any
 import logging_mp
 
-from roboautotask.configs.svd import CALIB_R, CALIB_T
+from roboautotask.configs.svd import get_calib_params
 from roboautotask.configs.robot import ROBOT_START_POS
 
 from roboautotask.utils.math import matrix_to_quaternion
@@ -10,21 +10,26 @@ from roboautotask.utils.math import matrix_to_quaternion
 logger = logging_mp.get_logger(__name__)
 
 
-def transform_cam_to_robot(point_cam):
+def transform_cam_to_robot(point_cam, arm: str = 'left'):
     """
     对应原 SVD_get_target.py
     输入: 相机坐标系点 [x, y, z]
     输出: 机器人基座坐标系点 [x, y, z]
+
+    Args:
+        point_cam: 相机坐标系下的点 [x, y, z]
+        arm:       使用的手臂，'left' 或 'right'（默认 'left'）
     """
     p_cam = np.array(point_cam)
     if p_cam.shape != (3,):
         p_cam = p_cam.reshape(3)
-        
+
+    calib_r, calib_t, _ = get_calib_params(arm)
     # Robot = R @ Cam + t
-    point_robot = (CALIB_R @ p_cam) + CALIB_T
+    point_robot = (calib_r @ p_cam) + calib_t
     return point_robot
 
-def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0):
+def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0, home_pos=None):
     """
     计算机器人末端法兰的预抓取姿态（位置 + 四元数）。
     
@@ -58,8 +63,7 @@ def get_target_flange_pose(target_obj_pos, offset_x, tilt_angle_deg=45.0):
     # 1. 数据准备与类型转换
     # ------------------------------------------------------------------
     P_target = np.array(target_obj_pos, dtype=np.float64)
-    # 注意：ROBOT_START_POS 需确保已定义，建议改为参数传入以增加函数纯度
-    P_home = np.array(ROBOT_START_POS, dtype=np.float64)
+    P_home = np.array(home_pos if home_pos is not None else ROBOT_START_POS, dtype=np.float64)
     
     # ------------------------------------------------------------------
     # 2. 计算水平接近方向 (确定 Yaw)
