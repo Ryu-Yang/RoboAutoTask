@@ -95,7 +95,7 @@ class Daemon:
         q_end = np.array(target_quat)
 
         # 抬升参数
-        lift_height = 0.07
+        lift_height = 0.09
 
         for i in range(int(steps) + 1):
             t = i / float(steps)
