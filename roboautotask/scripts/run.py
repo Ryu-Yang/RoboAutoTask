@@ -221,7 +221,7 @@ def run(cfg: ControlPipelineConfig):
                 operator.exec_task()
                 operator.start_task()
                 if isinstance(target_detection, ColorBlobDetector):
-                    time.sleep(5)  # 等待远端系统预热（start_collection 倒计5s）
+                    time.sleep(1.5)  # 等待远端系统预热（start_collection 倒计5s）
 
                 result = motion_executor.execute_by_id(grab_id, place_id)
                 if result == 0:
@@ -237,7 +237,7 @@ def run(cfg: ControlPipelineConfig):
                     operator.exec_task()
                     operator.start_task()
                     if isinstance(target_detection, ColorBlobDetector):
-                        time.sleep(5)  # 等待远端系统预热
+                        time.sleep(1.5)  # 等待远端系统预热
                     if not motion_executor.reset(grab_id,place_id):
                         logger.info(f"Sequence aborted at reset")
                         operator.destroy_task()
@@ -309,7 +309,7 @@ def run(cfg: ControlPipelineConfig):
                 operator.exec_task()
                 operator.start_task()
                 if isinstance(target_detection, ColorBlobDetector):
-                    time.sleep(5)  # 等待远端系统预热
+                    time.sleep(1.5)  # 等待远端系统预热
                 if not motion_executor.reset(grab_id,place_id):
                     logger.info(f"Sequence aborted at reset")
                     operator.destroy_task()
