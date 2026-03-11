@@ -14,7 +14,7 @@ items:
     name: plate
     offsets:
       x: 0.15
-      y: -0.05
+      y: 0
       z: 0.05
     roi:
     - 38
@@ -34,9 +34,9 @@ items:
     label: orange
     name: orange
     offsets:
-      x: 0.08
+      x: 0.1
       y: 0.0
-      z: 0.03
+      z: 0.01
 special_actions:
   0: home
   1: random-pose
