@@ -1,6 +1,9 @@
 detection_method: opencv
+
 items:
-  2:
+  1:
+    label: orange
+    name: orange
     gripper_pos: 20
     hsv_config:
       h_max: 47
@@ -10,13 +13,13 @@ items:
       s_min: 119
       v_max: 210
       v_min: 78
-    label: orange
-    name: orange
     offsets:
       x: 0.08
       y: 0.0
       z: 0.03
-  -3:
+  -1:
+    label: plate
+    name: plate
     gripper_pos: 100
     hsv_config:
       h_max: 49
@@ -26,8 +29,6 @@ items:
       s_min: 34
       v_max: 160
       v_min: 82
-    label: plate
-    name: plate
     offsets:
       x: 0.15
       y: -0.05
