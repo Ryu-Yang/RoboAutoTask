@@ -1,0 +1,17 @@
+detection_method: yolo
+
+items:
+  1:
+    name: "pink doll"
+    label: "pink doll"
+    offsets: {x: 0.06, y: 0.00, z: 0.03}
+    gripper_pos: 10
+  -1:
+    name: "basket"
+    label: "basket"
+    offsets: {x: 0.15, y: -0.05, z: 0.20}
+    gripper_pos: 100
+
+special_actions:
+  0: "home"
+  1: "random-pose"
