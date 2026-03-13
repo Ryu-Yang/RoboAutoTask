@@ -1,0 +1,42 @@
+detection_method: opencv
+items:
+  -1:
+    gripper_pos: 100
+    hsv_config:
+      h_max: 134
+      h_min: 99
+      invert: 0
+      s_max: 110
+      s_min: 76
+      v_max: 170
+      v_min: 129
+    label: plate
+    name: plate
+    offsets:
+      x: 0.15
+      y: 0
+      z: 0.05
+    roi:
+    - 1
+    - 88
+    - 634
+    - 368
+  1:
+    gripper_pos: 20
+    hsv_config:
+      h_max: 47
+      h_min: 0
+      invert: 0
+      s_max: 255
+      s_min: 119
+      v_max: 210
+      v_min: 78
+    label: orange
+    name: orange
+    offsets:
+      x: 0.1
+      y: 0.0
+      z: 0.01
+special_actions:
+  0: home
+  1: random-pose

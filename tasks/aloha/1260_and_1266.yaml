@@ -1,0 +1,42 @@
+detection_method: opencv
+items:
+  -1:
+    gripper_pos: 100
+    hsv_config:
+      h_max: 54
+      h_min: 24
+      invert: 0
+      s_max: 77
+      s_min: 0
+      v_max: 159
+      v_min: 77
+    label: plate
+    name: plate
+    offsets:
+      x: 0.15
+      y: -0.05
+      z: 0.0
+    roi:
+    - 6
+    - 52
+    - 624
+    - 414
+  1:
+    gripper_pos: 20
+    hsv_config:
+      h_max: 180
+      h_min: 0
+      invert: 0
+      s_max: 255
+      s_min: 133
+      v_max: 188
+      v_min: 0
+    label: cake
+    name: cake
+    offsets:
+      x: 0.145
+      y: 0.0
+      z: -0.045
+special_actions:
+  0: home
+  1: random-pose
