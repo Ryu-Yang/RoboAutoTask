@@ -50,3 +50,16 @@ roboautotask-run --robot.type=agilex_aloha_eepose_mix --operator.task_id=1212 --
 ```
 sudo rm -rf /dev/shm/*
 ```
+
+如果出现了储存空间占满的情况，可以手动运行 数据清理 脚本：
+
+运行的话，新开个终端，激活环境：
+
+```
+source .venv/bin/activate
+```
+
+删除3天以前的
+```bash
+python roboautotask/scripts/clean_data.py --root /home/<这里换成对应的用户名，括号删除>/DoRobot/ --days 3
+```
