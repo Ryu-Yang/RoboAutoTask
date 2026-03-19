@@ -225,20 +225,22 @@ class MotionExecutor:
         # 比如放置在盘子上方，直接修改 robot_point_raw 的 Z 值
         z_offset = grab_item.get('offsets', {}).get('z', 0)
         robot_point_raw[2] += z_offset
-
-        place_z_offset = place_item.get('offsets', {}).get('z', 0)
-        place_robot_point_raw[2] += place_z_offset - 0.01
-
-        # 4. 计算末端法兰位姿
-        # offset_x 依然用于处理夹爪/物体的距离补偿
+        y_offset = grab_item.get('offsets', {}).get('y', 0)
+        robot_point_raw[1] += y_offset
         off_x = grab_item.get('offsets', {}).get('x', 0)
         
+        # 4. 计算末端法兰位姿
+        # offset_x 依然用于处理夹爪/物体的距离补偿
         final_pos, final_quat = get_target_flange_pose(
             robot_point_raw, 
             offset_x=off_x,
             home_pos=self.home_pos
         )
 
+        place_z_offset = place_item.get('offsets', {}).get('z', 0)
+        place_robot_point_raw[2] += place_z_offset - 0.01
+        place_y_offset = place_item.get('offsets', {}).get('y', 0)
+        place_robot_point_raw[1] += place_y_offset
         place_off_x = place_item.get('offsets', {}).get('x', 0)
         
         place_final_pos, place_final_quat = get_target_flange_pose(
