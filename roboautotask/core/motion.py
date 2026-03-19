@@ -101,6 +101,8 @@ class MotionExecutor:
         ### 运动到物体位置
         z_offset = grab_item.get('offsets', {}).get('z', 0)
         robot_point_raw[2] += z_offset
+        y_offset = grab_item.get('offsets', {}).get('y', 0)
+        robot_point_raw[1] += y_offset
         off_x = grab_item.get('offsets', {}).get('x', 0)
         
         logger.info(f"target_pos obj: {robot_point_raw}")
